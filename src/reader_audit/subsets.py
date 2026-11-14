@@ -148,3 +148,15 @@ def interpolate(curve: Sequence[float], k: float) -> float:
     if not ks[0] <= k <= ks[-1]:
         raise ValueError(f"k={k} outside [1, {len(curve)}]")
     return float(np.interp(k, ks, curve))
+
+
+def credit_from_votes(votes: np.ndarray, correct: np.ndarray) -> np.ndarray:
+    """Plurality credit of each row of a (subsets, answer groups) vote matrix.
+
+    The group with the most votes wins; an m-way tie that contains a right group earns
+    1/m, and a row without any vote earns 0.
+    """
+    top = votes.max(axis=1, keepdims=True)
+    tied = (votes == top) & (top > 0)
+    wins = (tied & correct[None, :]).any(axis=1)
+    return np.where(wins, 1.0 / np.maximum(tied.sum(axis=1), 1), 0.0)

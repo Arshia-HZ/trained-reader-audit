@@ -18,7 +18,7 @@ from math import comb
 import numpy as np
 
 from reader_audit.pools import Candidate, ProblemPool
-from reader_audit.subsets import AnswerGroups
+from reader_audit.subsets import AnswerGroups, credit_from_votes
 
 DEFAULT_CONFIDENCE = 50  # for a sample whose confidence cannot be read
 MAX_SUBSETS = 250_000
@@ -70,11 +70,7 @@ def weighted_vote_credit(
         if label is not None:
             per_group[i, label] = weights[i]
     totals = subset_matrix(n, k) @ per_group  # weighted votes of each group, per subset
-    top = totals.max(axis=1, keepdims=True)
-    tied = (totals == top) & (top > 0)
-    right = np.asarray(groups.correct)[None, :]
-    win = (tied & right).any(axis=1)
-    return float(np.where(win, 1.0 / np.maximum(tied.sum(axis=1), 1), 0.0).mean())
+    return float(credit_from_votes(totals, np.asarray(groups.correct)).mean())
 
 
 def _plurality_credit(counts: Sequence[int], correct: Sequence[bool]) -> float:

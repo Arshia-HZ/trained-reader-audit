@@ -1,0 +1,199 @@
+{
+ "k": 8,
+ "candidate_cap": 1536,
+ "sets": {
+  "all": {
+   "n_problems": 600,
+   "set_share": {
+    "c0": 0.1396875,
+    "c1": 0.06572916666666667,
+    "c2+": 0.7945833333333333,
+    "swap_broad": 0.41270833333333334,
+    "swap_primary": 0.35489583333333335
+   },
+   "by_draws": {
+    "4": {
+     "c0": {
+      "coverage": 0.19333333333333333,
+      "problems": 116,
+      "sets_per_covered_problem": 2.8620689655172415
+     },
+     "c1": {
+      "coverage": 0.15166666666666667,
+      "problems": 91,
+      "sets_per_covered_problem": 1.978021978021978
+     },
+     "c2+": {
+      "coverage": 0.8233333333333334,
+      "problems": 494,
+      "sets_per_covered_problem": 3.8218623481781377
+     },
+     "swap_broad": {
+      "coverage": 0.5283333333333333,
+      "problems": 317,
+      "sets_per_covered_problem": 3.082018927444795
+     },
+     "swap_primary": {
+      "coverage": 0.5016666666666667,
+      "problems": 301,
+      "sets_per_covered_problem": 2.8372093023255816
+     }
+    },
+    "8": {
+     "c0": {
+      "coverage": 0.21,
+      "problems": 126,
+      "sets_per_covered_problem": 5.238095238095238
+     },
+     "c1": {
+      "coverage": 0.17833333333333334,
+      "problems": 107,
+      "sets_per_covered_problem": 3.1869158878504673
+     },
+     "c2+": {
+      "coverage": 0.8416666666666667,
+      "problems": 505,
+      "sets_per_covered_problem": 7.522772277227722
+     },
+     "swap_broad": {
+      "coverage": 0.5566666666666666,
+      "problems": 334,
+      "sets_per_covered_problem": 5.925149700598802
+     },
+     "swap_primary": {
+      "coverage": 0.525,
+      "problems": 315,
+      "sets_per_covered_problem": 5.425396825396826
+     }
+    },
+    "16": {
+     "c0": {
+      "coverage": 0.23666666666666666,
+      "problems": 142,
+      "sets_per_covered_problem": 9.443661971830986
+     },
+     "c1": {
+      "coverage": 0.2,
+      "problems": 120,
+      "sets_per_covered_problem": 5.258333333333334
+     },
+     "c2+": {
+      "coverage": 0.8516666666666667,
+      "problems": 511,
+      "sets_per_covered_problem": 14.927592954990216
+     },
+     "swap_broad": {
+      "coverage": 0.57,
+      "problems": 342,
+      "sets_per_covered_problem": 11.584795321637428
+     },
+     "swap_primary": {
+      "coverage": 0.5416666666666666,
+      "problems": 325,
+      "sets_per_covered_problem": 10.483076923076924
+     }
+    }
+   }
+  },
+  "level_5": {
+   "n_problems": 208,
+   "set_share": {
+    "c0": 0.2536057692307692,
+    "c1": 0.09044471153846154,
+    "c2+": 0.6559495192307693,
+    "swap_broad": 0.46694711538461536,
+    "swap_primary": 0.38491586538461536
+   },
+   "by_draws": {
+    "4": {
+     "c0": {
+      "coverage": 0.33653846153846156,
+      "problems": 70,
+      "sets_per_covered_problem": 3.0
+     },
+     "c1": {
+      "coverage": 0.22115384615384615,
+      "problems": 46,
+      "sets_per_covered_problem": 2.0
+     },
+     "c2+": {
+      "coverage": 0.7019230769230769,
+      "problems": 146,
+      "sets_per_covered_problem": 3.6301369863013697
+     },
+     "swap_broad": {
+      "coverage": 0.5528846153846154,
+      "problems": 115,
+      "sets_per_covered_problem": 3.234782608695652
+     },
+     "swap_primary": {
+      "coverage": 0.5192307692307693,
+      "problems": 108,
+      "sets_per_covered_problem": 2.935185185185185
+     }
+    },
+    "8": {
+     "c0": {
+      "coverage": 0.3557692307692308,
+      "problems": 74,
+      "sets_per_covered_problem": 5.72972972972973
+     },
+     "c1": {
+      "coverage": 0.2644230769230769,
+      "problems": 55,
+      "sets_per_covered_problem": 2.8545454545454545
+     },
+     "c2+": {
+      "coverage": 0.7259615384615384,
+      "problems": 151,
+      "sets_per_covered_problem": 7.172185430463577
+     },
+     "swap_broad": {
+      "coverage": 0.5817307692307693,
+      "problems": 121,
+      "sets_per_covered_problem": 6.330578512396694
+     },
+     "swap_primary": {
+      "coverage": 0.5480769230769231,
+      "problems": 114,
+      "sets_per_covered_problem": 5.535087719298246
+     }
+    },
+    "16": {
+     "c0": {
+      "coverage": 0.40384615384615385,
+      "problems": 84,
+      "sets_per_covered_problem": 10.047619047619047
+     },
+     "c1": {
+      "coverage": 0.3076923076923077,
+      "problems": 64,
+      "sets_per_covered_problem": 4.703125
+     },
+     "c2+": {
+      "coverage": 0.7403846153846154,
+      "problems": 154,
+      "sets_per_covered_problem": 14.175324675324676
+     },
+     "swap_broad": {
+      "coverage": 0.5961538461538461,
+      "problems": 124,
+      "sets_per_covered_problem": 12.53225806451613
+     },
+     "swap_primary": {
+      "coverage": 0.5673076923076923,
+      "problems": 118,
+      "sets_per_covered_problem": 10.85593220338983
+     }
+    }
+   }
+  }
+ },
+ "candidates": {
+  "n": 10800,
+  "share_generation_truncated": 0.07787037037037037,
+  "share_cut_for_display": 0.1362962962962963,
+  "share_complete_but_cut_for_display": 0.05842592592592592,
+  "share_of_cut_that_are_complete": 0.42866847826086957
+ }
+}

@@ -9,7 +9,7 @@ from channel_audit.runner import RunConfig
 
 from helpers import write_pool_shard
 from reader_audit import reader_eval as ev
-from reader_audit.arms import swap_eligible
+from reader_audit.arms import swap_plan
 from reader_audit.cand_sets import STRATA, draw_set
 from reader_audit.pools import load_pools
 from reader_audit.reader_run import (
@@ -71,7 +71,7 @@ def test_the_count_follows_the_formula_with_swap_only_where_eligible(world):
     for arm in ("reader_full", "candidate_free", "answer_only", "placebo"):
         assert per_arm[arm] == n_sets * REPS
     eligible = sum(
-        swap_eligible(pool, draw_set(pool, K, d)) is not None
+        swap_plan(pool, draw_set(pool, K, d)) is not None
         for pool in pools.values()
         for d in range(DRAWS)
     )
@@ -157,3 +157,40 @@ def test_unknown_arms_are_refused_when_planning(world):
             n_draws=1,
             replicates=1,
         )
+
+
+def test_swap_cells_split_into_a_primary_population_inside_the_broad_one(world):
+    outcomes = ev.load_outcomes(world["out"])
+    broad = ev.swap_cells(outcomes, K, primary_only=False)
+    primary = ev.swap_cells(outcomes, K)
+    assert primary and primary < broad
+    for pid, draw in primary:  # the flag is the strict-plurality rule, recomputed here
+        plan = swap_plan(world["pools"][pid], draw_set(world["pools"][pid], K, draw))
+        assert plan.correct_plurality is True
+    for pid, draw in broad - primary:
+        plan = swap_plan(world["pools"][pid], draw_set(world["pools"][pid], K, draw))
+        assert plan.correct_plurality is False
+
+
+def test_the_swap_drop_uses_only_the_primary_cells_by_default(world):
+    outcomes = ev.load_outcomes(world["out"])
+    primary = ev.swap_cells(outcomes, K)
+    drops = ev.swap_drops(outcomes, K)
+    assert set(drops) <= {pid for pid, _ in primary}
+    broad_drops = ev.swap_drops(outcomes, K, primary_only=False)
+    assert set(drops) <= set(broad_drops)
+
+
+def test_difference_of_contrasts_pairs_on_the_shared_problems():
+    first = {"a": 0.5, "b": 0.2, "c": 0.1}
+    second = {"b": 0.1, "c": 0.3, "d": 0.9}
+    assert ev.difference_of_contrasts(first, second) == pytest.approx(
+        {"b": 0.1, "c": -0.2}
+    )
+
+
+def test_cell_means_can_be_limited_to_a_set_of_cells(world):
+    outcomes = ev.load_outcomes(world["out"])
+    cells = set(list(ev.cell_means(outcomes, "reader_full", K))[:5])
+    limited = ev.cell_means(outcomes, "reader_full", K, cells=cells)
+    assert set(limited) == cells

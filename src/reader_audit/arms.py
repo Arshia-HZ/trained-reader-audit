@@ -2,13 +2,21 @@
 
 Pure functions from a pool and a candidate set to chat messages. Nothing here calls a
 model. Every arm that shows solutions renders through the reader's own template.
+
+Every arm that shows candidate text records, in ``detail``, how many of the shown
+candidates were cut by the generation limit (``n_gen_truncated``: no final answer, shown
+as generated), how many were cut for display by the prompt cap (``n_prompt_clipped``),
+and how many shown texts no longer yield their candidate's final answer
+(``n_answer_hidden``). The two kinds of truncation are never confused (PREREG D14).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
+from channel_audit.channels import strip_confidence
+from channel_audit.extract import extract_answer
 from channel_audit.placebo import pick_donor
 
 from reader_audit import reader_prompts as rp
@@ -19,7 +27,8 @@ from reader_audit.controls import (
     plurality_wrong_answer,
     swap_final_answer,
 )
-from reader_audit.pools import ProblemPool
+from reader_audit.pools import Candidate, ProblemPool
+from reader_audit.subsets import group_answers
 
 ARMS = rp.ARMS
 
@@ -79,16 +88,61 @@ class DonorIndex:
         return donor_pool, draw_set(donor_pool, cset.k, cset.draw)
 
 
-def swap_eligible(pool: ProblemPool, cset: CandidateSet) -> str | None:
-    """The wrong answer to swap in, or None if the set cannot be swapped.
+@dataclass(frozen=True)
+class SwapPlan:
+    """How an answer swap applies to one candidate set (PREREG D25)."""
 
-    A set qualifies with at least two correct candidates and at least one wrong
-    parsable answer; the swap target is the most frequent wrong answer.
+    target: str  # the wrong answer written into the correct candidates' final box
+    correct_plurality: bool  # the correct answer was the strict plurality beforehand
+
+
+def swap_plan(pool: ProblemPool, cset: CandidateSet) -> SwapPlan | None:
+    """The swap of a set, or None if the set cannot be swapped.
+
+    A set qualifies (the broad population) with at least two correct candidates and at
+    least one wrong parsable answer. Candidates without a final answer are not wrong
+    answers. The target is the most frequent wrong answer, answers pooled by the audit's
+    equivalence; a tie goes to the answer shown first. The set is in the primary
+    population when the correct answer is the *strict* plurality before the swap: more
+    candidates than any wrong answer, so a tie with a wrong answer does not count.
     """
     if cset.n_correct < 2:
         return None
     cands = members(pool, cset)
-    return plurality_wrong_answer([c.answer for c in cands], [c.correct for c in cands])
+    answers = [c.answer for c in cands]
+    correct = [c.correct for c in cands]
+    target = plurality_wrong_answer(answers, correct)
+    if target is None:
+        return None
+    groups = group_answers(answers, correct)
+    right = sum(s for s, ok in zip(groups.sizes, groups.correct, strict=True) if ok)
+    wrong_top = max(
+        (s for s, ok in zip(groups.sizes, groups.correct, strict=True) if not ok),
+        default=0,
+    )
+    return SwapPlan(target, right > wrong_top)
+
+
+def _show(
+    cands: Sequence[Candidate],
+    sources: Sequence[str],
+    intended: Sequence[str | None],
+    cap: int | None,
+    truncate: Truncate | None,
+) -> tuple[list[str], dict]:
+    """Prepared texts for display and how the display cut them."""
+    texts, clipped, hidden = [], 0, 0
+    for source, want in zip(sources, intended, strict=True):
+        shown = rp.prepare_candidate(source, cap, truncate)
+        texts.append(shown)
+        clipped += shown != strip_confidence(source)
+        hidden += extract_answer(shown) != want
+    stats = {
+        "n_gen_truncated": sum(c.truncated for c in cands),
+        "n_prompt_clipped": clipped,
+        "n_answer_hidden": hidden,
+    }
+    return texts, stats
 
 
 def build_arm_input(
@@ -107,8 +161,14 @@ def build_arm_input(
     cands = members(pool, cset)
     keys = tuple(c.gen_key for c in cands)
 
-    def prep(text: str) -> str:
-        return rp.prepare_candidate(text, cap, truncate)
+    def show(chosen, sources=None, intended=None):
+        return _show(
+            chosen,
+            sources if sources is not None else [c.text for c in chosen],
+            intended if intended is not None else [c.answer for c in chosen],
+            cap,
+            truncate,
+        )
 
     if arm == "candidate_free":
         return ArmInput(arm, rp.build_prompt(arm, question), ())
@@ -116,54 +176,67 @@ def build_arm_input(
         msgs = rp.build_prompt(arm, question, answers=[c.answer for c in cands])
         return ArmInput(arm, msgs, keys)
     if arm == "reader_full":
-        texts = [prep(c.text) for c in cands]
-        return ArmInput(arm, rp.build_prompt(arm, question, texts=texts), keys)
+        texts, stats = show(cands)
+        return ArmInput(arm, rp.build_prompt(arm, question, texts=texts), keys, stats)
     if arm == "placebo":
         if donors is None:
             raise ValueError("placebo needs a DonorIndex")
         donor_pool, donor_set = donors.pick(pool, cset)
         shown = members(donor_pool, donor_set)
-        texts = [prep(c.text) for c in shown]
+        texts, stats = show(shown)
         return ArmInput(
             arm,
             rp.build_prompt(arm, question, texts=texts),
             tuple(c.gen_key for c in shown),
-            {"donor_problem": donor_pool.problem.problem_id},
+            {"donor_problem": donor_pool.problem.problem_id, **stats},
         )
     if arm == "duplicate":
-        texts = [prep(cands[0].text)] * cset.k
+        texts, stats = show(cands[:1])
         return ArmInput(
-            arm, rp.build_prompt(arm, question, texts=texts), (keys[0],) * cset.k
+            arm,
+            rp.build_prompt(arm, question, texts=texts * cset.k),
+            (keys[0],) * cset.k,
+            stats,
         )
     if arm == "single_slot":
-        texts = [prep(cands[0].text)] + [rp.EMPTY_SLOT] * (cset.k - 1)
-        return ArmInput(arm, rp.build_prompt(arm, question, texts=texts), (keys[0],))
+        texts, stats = show(cands[:1])
+        slots = texts + [rp.EMPTY_SLOT] * (cset.k - 1)
+        return ArmInput(
+            arm, rp.build_prompt(arm, question, texts=slots), (keys[0],), stats
+        )
     if arm == "dedup":
         order = dedup_order([c.answer for c in cands])
-        texts = [prep(cands[i].text) for i in order]
+        texts, stats = show([cands[i] for i in order])
         return ArmInput(
             arm,
             rp.build_prompt(arm, question, texts=texts),
             tuple(keys[i] for i in order),
-            {"n_shown": len(order)},
+            {"n_shown": len(order), **stats},
         )
     # answer_swap
-    wrong = swap_eligible(pool, cset)
-    if wrong is None:
+    plan = swap_plan(pool, cset)
+    if plan is None:
         return None
-    texts, swapped = [], 0
+    sources, intended, swapped = [], [], 0
     for c in cands:
-        text = c.text
+        text, want = c.text, c.answer
         if c.correct and c.answer is not None:
             try:
-                text = swap_final_answer(c.text, wrong)
+                text, want = swap_final_answer(c.text, plan.target), plan.target
                 swapped += 1
             except ValueError:  # no box to swap: the candidate is shown as it was
                 pass
-        texts.append(prep(text))
+        sources.append(text)
+        intended.append(want)
+    texts, stats = show(cands, sources, intended)
     return ArmInput(
         arm,
         rp.build_prompt(arm, question, texts=texts),
         keys,
-        {"swap_to": wrong, "n_swapped": swapped},
+        {
+            "swap_to": plan.target,
+            "n_swapped": swapped,
+            "correct_plurality": plan.correct_plurality,
+            **stats,
+        },
     )

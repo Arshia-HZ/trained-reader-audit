@@ -94,8 +94,9 @@ def test_middle_clipper_keeps_the_start_and_the_end_of_a_long_text():
     assert clip(text, 100) == text and clip(text, 200) == text
     out = clip(text, 20)
     assert out.startswith("w0 w1") and out.endswith("w95 w96 w97 w98 w99")
-    assert "w14" in out and "w15" not in out  # 20 - 5 = 15 tokens from the start
-    assert OMITTED in out
+    # cap 20 = 7 marker tokens + 5 tail tokens + 8 tokens from the start
+    assert "w7" in out and "w8" not in out
+    assert OMITTED in out and len(out.split()) == 20
 
 
 def test_the_boxed_answer_survives_clipping():
@@ -104,3 +105,37 @@ def test_the_boxed_answer_survives_clipping():
     clip = middle_clipper(lambda t: t.split(), lambda ids: " ".join(ids), tail=6)
     text = " ".join(f"step{i}" for i in range(500)) + r" so \boxed{42}"
     assert extract_answer(clip(text, 30)) == "42"
+
+
+def word_clipper(tail):
+    from reader_audit.controls import middle_clipper
+
+    return middle_clipper(lambda t: t.split(), lambda ids: " ".join(ids), tail=tail)
+
+
+def test_the_marker_counts_towards_the_cap_for_every_cap():
+    text = " ".join(f"w{i}" for i in range(400))
+    for cap in range(1, 120):
+        out = word_clipper(tail=10)(text, cap)
+        assert len(out.split()) <= cap, cap
+        if cap >= 30:  # room for the marker, the tail and some of the start
+            assert out.endswith("w390 w391 w392 w393 w394 w395 w396 w397 w398 w399")
+
+
+def test_a_cap_smaller_than_the_marker_keeps_only_the_end():
+    out = word_clipper(tail=10)(" ".join(f"w{i}" for i in range(50)), 4)
+    assert out == "w46 w47 w48 w49"
+
+
+def test_retokenising_the_joined_text_cannot_push_it_over_the_cap():
+    from reader_audit.controls import OMITTED, middle_clipper
+
+    def encode(text):  # a merge at the seam costs one extra token
+        tokens = text.split()
+        if text != OMITTED and "omitted" in text:
+            tokens.append("SEAM")
+        return tokens
+
+    clip = middle_clipper(encode, lambda ids: " ".join(ids), tail=5)
+    out = clip(" ".join(f"w{i}" for i in range(200)), 30)
+    assert len(encode(out)) <= 30

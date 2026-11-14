@@ -94,21 +94,40 @@ def middle_clipper(
     decode: Callable[[list[int]], str],
     tail: int = TAIL_TOKENS,
 ) -> Truncate:
-    """A ``Truncate`` that keeps the start and the last ``tail`` tokens of a long text.
+    """A ``Truncate`` that keeps the end of a long text and as much of its start as fit.
 
     A solution ends with its conclusion and its boxed answer, so cutting the end would
     hide the answer a reader is meant to weigh. A text of at most ``cap`` tokens is
-    returned unchanged; a longer one keeps ``cap - tail`` tokens from its start and
-    ``tail`` from its end, with a marker between them (about ten more tokens, so the
-    result has ``cap`` plus the marker; checked with the Qwen3 tokenizer: 1,545 for a
-    cap of 1,536).
+    returned unchanged. A longer one becomes ``head + marker + tail`` and is **at most
+    ``cap`` tokens including the marker**: the last ``tail`` tokens are kept, the
+    marker is counted, and the head takes what is left (with the Qwen3 tokenizer and a
+    cap of 1,536, about 1,270 tokens). Re-tokenising the joined text can change a token
+    at a seam, so the head is trimmed until the whole result fits.
     """
+    marker = len(encode(OMITTED))
+
+    def build(ids: list[int], head: int, tail_n: int) -> str:
+        end = decode(ids[len(ids) - tail_n :]) if tail_n else ""
+        return decode(ids[:head]) + OMITTED + end
 
     def clip(text: str, cap: int) -> str:
         ids = encode(text)
         if len(ids) <= cap:
             return text
-        keep = max(cap - tail, 0)
-        return decode(ids[:keep]) + OMITTED + decode(ids[len(ids) - tail :])
+        room = cap - marker
+        if room <= 0:  # no room for the marker: keep only the end
+            return decode(ids[len(ids) - cap :]) if cap > 0 else ""
+        tail_n = min(tail, room)
+        head = room - tail_n
+        out = build(ids, head, tail_n)
+        over = len(encode(out)) - cap
+        while over > 0 and (head > 0 or tail_n > 0):
+            if head > 0:
+                head = max(head - over, 0)
+            else:
+                tail_n = max(tail_n - over, 0)
+            out = build(ids, head, tail_n)
+            over = len(encode(out)) - cap
+        return out
 
     return clip

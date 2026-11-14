@@ -9,8 +9,8 @@ the unit of the bootstrap, as in the audit.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Collection, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from channel_audit.analysis.contrasts import summarize
@@ -36,6 +36,7 @@ class Outcome:
     value: float  # 1.0 or 0.0 for a reader, the vote credit for the plain vote
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    detail: Mapping = field(default_factory=dict)  # the plan row's control detail
 
 
 def load_outcomes(out_dir: str | Path) -> list[Outcome]:
@@ -61,6 +62,7 @@ def load_outcomes(out_dir: str | Path) -> list[Outcome]:
                 value=1.0 if graded.get(row.gen_key).correct else 0.0,
                 prompt_tokens=gen.prompt_tokens,
                 completion_tokens=gen.completion_tokens,
+                detail=dict(row.detail),
             )
         )
     return out
@@ -91,12 +93,22 @@ def vote_outcomes(
 
 
 def cell_means(
-    outcomes: Iterable[Outcome], arm: str, k: int, stratum: str | None = None
+    outcomes: Iterable[Outcome],
+    arm: str,
+    k: int,
+    stratum: str | None = None,
+    cells: Collection[tuple[str, int]] | None = None,
 ) -> dict[tuple[str, int], float]:
-    """Mean over replicates of each (problem, draw) cell of an arm."""
+    """Mean over replicates of each (problem, draw) cell of an arm.
+
+    ``cells`` limits the result to a set of (problem, draw) cells, such as the
+    population of an answer swap.
+    """
     sums: dict[tuple[str, int], list[float]] = defaultdict(list)
     for o in outcomes:
-        if o.arm == arm and o.k == k and (stratum is None or o.stratum == stratum):
+        if o.arm != arm or o.k != k or (stratum is not None and o.stratum != stratum):
+            continue
+        if cells is None or (o.problem_id, o.draw) in cells:
             sums[(o.problem_id, o.draw)].append(o.value)
     return {cell: sum(v) / len(v) for cell, v in sums.items()}
 
@@ -109,11 +121,16 @@ def problem_means(cells: Mapping[tuple[str, int], float]) -> dict[str, float]:
 
 
 def paired_diffs(
-    outcomes: Sequence[Outcome], a: str, b: str, k: int, stratum: str | None = None
+    outcomes: Sequence[Outcome],
+    a: str,
+    b: str,
+    k: int,
+    stratum: str | None = None,
+    cells: Collection[tuple[str, int]] | None = None,
 ) -> dict[str, float]:
     """Per problem, mean(a) - mean(b) over the cells both arms have."""
-    cells_a = cell_means(outcomes, a, k, stratum)
-    cells_b = cell_means(outcomes, b, k, stratum)
+    cells_a = cell_means(outcomes, a, k, stratum, cells)
+    cells_b = cell_means(outcomes, b, k, stratum, cells)
     shared = cells_a.keys() & cells_b.keys()
     return problem_means({cell: cells_a[cell] - cells_b[cell] for cell in shared})
 
@@ -127,9 +144,46 @@ def contrast(
     alternative: str | None = None,
     n_boot: int = 10_000,
     seed: int = 0,
+    cells: Collection[tuple[str, int]] | None = None,
 ) -> dict | None:
     """Bootstrap summary of a - b, or None if no problem has both arms."""
-    diffs = paired_diffs(outcomes, a, b, k, stratum)
+    diffs = paired_diffs(outcomes, a, b, k, stratum, cells)
     if not diffs:
         return None
     return summarize(diffs, alternative, n_boot=n_boot, seed=seed)
+
+
+# ---- the answer swap (PREREG D25) ------------------------------------------------
+
+
+def swap_cells(
+    outcomes: Iterable[Outcome], k: int, primary_only: bool = True
+) -> set[tuple[str, int]]:
+    """The (problem, draw) cells that have an answer swap.
+
+    The primary population is the sets whose correct answer was the strict plurality
+    before the swap; with ``primary_only=False`` every swappable set (the broad c2+
+    population, a secondary analysis) is returned.
+    """
+    return {
+        (o.problem_id, o.draw)
+        for o in outcomes
+        if o.arm == "answer_swap"
+        and o.k == k
+        and (not primary_only or o.detail.get("correct_plurality") is True)
+    }
+
+
+def swap_drops(
+    outcomes: Sequence[Outcome], k: int, primary_only: bool = True
+) -> dict[str, float]:
+    """Per problem: accuracy on the original sets minus accuracy on the swapped sets."""
+    cells = swap_cells(outcomes, k, primary_only)
+    return paired_diffs(outcomes, "reader_full", "answer_swap", k, None, cells)
+
+
+def difference_of_contrasts(
+    first: Mapping[str, float], second: Mapping[str, float]
+) -> dict[str, float]:
+    """Per problem, first - second, over the problems both contrasts have."""
+    return {pid: first[pid] - second[pid] for pid in first.keys() & second.keys()}

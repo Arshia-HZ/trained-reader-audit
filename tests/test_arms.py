@@ -133,10 +133,12 @@ def test_dedup_shows_one_candidate_per_distinct_answer(pool):
 
 def test_answer_swap_replaces_only_the_correct_candidates_answers(pool):
     cset = mixed_set(pool, 2, 1)
-    wrong = A.swap_eligible(pool, cset)
-    assert wrong is not None
+    plan = A.swap_plan(pool, cset)
+    assert plan is not None
+    wrong = plan.target
     inp = A.build_arm_input("answer_swap", pool, cset, cap=None)
-    assert inp.detail == {"swap_to": wrong, "n_swapped": 2}
+    assert inp.detail["swap_to"] == wrong and inp.detail["n_swapped"] == 2
+    assert inp.detail["correct_plurality"] is plan.correct_plurality
     shown = [s.split("\n", 1)[1] for s in body(inp).split("Solver ")[1:]]
     shown_answers = [extract_answer(s.split("\n\nWork out")[0]) for s in shown]
     cands = members(pool, cset)
