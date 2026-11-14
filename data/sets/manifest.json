@@ -1,0 +1,30 @@
+{
+ "audit_split_manifest_sha256": "acb7df5f74fa76b2ef7eabfba9c69953178162cec98ecb5d5d4e12de58e469ed",
+ "n_dev": 600,
+ "sets": {
+  "dev": {
+   "ids_sha256": "772b7f1359109f792be63e4c67639319b1ae48c726f054d0f10ae88723b0ada9",
+   "levels": {
+    "3": 199,
+    "4": 193,
+    "5": 208
+   },
+   "n": 600
+  },
+  "primary": {
+   "ids_sha256": "7d6cb31a40804f30339ea9475fb1d25dc4492f984b0af4ffdd852dd11ca86e50",
+   "levels": {
+    "5": 972
+   },
+   "n": 972
+  },
+  "reserve": {
+   "ids_sha256": "3d2cabff41b3304192c06bd49a432dde9cfb4206cefd46fc0f8ceb6fcc9ca124",
+   "levels": {
+    "3": 805,
+    "4": 873
+   },
+   "n": 1678
+  }
+ }
+}
