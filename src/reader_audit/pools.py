@@ -73,6 +73,44 @@ def _arm_rank(arm: str, arms: Sequence[str]) -> int:
     return arms.index(arm)
 
 
+def read_pools(
+    directory: str | Path, arms: Sequence[str] = POOL_ARMS
+) -> dict[str, ProblemPool]:
+    """The pools of one run directory (problems, generations and grades)."""
+    base = Path(directory)
+    problems = JsonlStore(
+        base / "problems.jsonl", Problem, key="problem_id", readonly=True
+    )
+    graded = JsonlStore(base / "graded.jsonl", Graded, readonly=True)
+    found: dict[str, list[Candidate]] = defaultdict(list)
+    for gen in JsonlStore(base / "generations.jsonl", Generation, readonly=True):
+        if gen.arm not in arms:
+            continue
+        grade = graded.get(gen.gen_key)
+        found[gen.problem_id].append(
+            Candidate(
+                gen_key=gen.gen_key,
+                arm=gen.arm,
+                replicate=gen.replicate,
+                index=gen.agent if gen.arm == "round0" else gen.sample_idx,
+                text=gen.text,
+                answer=grade.extracted,
+                confidence=grade.confidence,
+                correct=grade.correct,
+                prompt_tokens=gen.prompt_tokens,
+                completion_tokens=gen.completion_tokens,
+                truncated=gen.finish_reason != "stop",
+            )
+        )
+    pools: dict[str, ProblemPool] = {}
+    for problem in problems:
+        items = found.get(problem.problem_id, [])
+        if items:
+            items.sort(key=lambda c: (c.replicate, _arm_rank(c.arm, arms), c.index))
+            pools[problem.problem_id] = ProblemPool(problem, tuple(items))
+    return pools
+
+
 def load_pools(
     root: str | Path,
     *,
@@ -87,38 +125,10 @@ def load_pools(
     for shard in shards:
         if verify:
             verify_shard(shard)
-        problems = JsonlStore(
-            shard / "problems.jsonl", Problem, key="problem_id", readonly=True
-        )
-        graded = JsonlStore(shard / "graded.jsonl", Graded, readonly=True)
-        found: dict[str, list[Candidate]] = defaultdict(list)
-        for gen in JsonlStore(shard / "generations.jsonl", Generation, readonly=True):
-            if gen.arm not in arms:
-                continue
-            grade = graded.get(gen.gen_key)
-            found[gen.problem_id].append(
-                Candidate(
-                    gen_key=gen.gen_key,
-                    arm=gen.arm,
-                    replicate=gen.replicate,
-                    index=gen.agent if gen.arm == "round0" else gen.sample_idx,
-                    text=gen.text,
-                    answer=grade.extracted,
-                    confidence=grade.confidence,
-                    correct=grade.correct,
-                    prompt_tokens=gen.prompt_tokens,
-                    completion_tokens=gen.completion_tokens,
-                    truncated=gen.finish_reason != "stop",
-                )
-            )
-        for problem in problems:
-            items = found.get(problem.problem_id, [])
-            if not items:
-                continue
-            if problem.problem_id in pools:
-                raise ValueError(f"{problem.problem_id} appears in two shards")
-            items.sort(key=lambda c: (c.replicate, _arm_rank(c.arm, arms), c.index))
-            pools[problem.problem_id] = ProblemPool(problem, tuple(items))
+        for pid, pool in read_pools(shard, arms).items():
+            if pid in pools:
+                raise ValueError(f"{pid} appears in two shards")
+            pools[pid] = pool
     return pools
 
 
