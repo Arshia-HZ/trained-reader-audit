@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Raw generations, pools and checkpoints live in private Hugging Face repositories,
+# never in Git.
+raw/
+runs/
+checkpoints/
+*.jsonl
+*.torn
+*.safetensors
+.env
+
+# Rebuilt problem files and local results (the manifests and reports are force-added).
+data/problems/
+results/
+notebooks/__marimo__/
+
+# Raw working notes of the literature research; the cited report is in docs/research/.
+docs/research_notes/
+
+# Agent skills installed locally
+.agents/
+.claude/skills/
+skills-lock.json

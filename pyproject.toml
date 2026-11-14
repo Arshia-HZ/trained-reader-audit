@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trained-reader-audit"
+version = "0.0.1"
+description = "Does RL training make a small reader beat self-consistency because it reads? A controlled, compute-matched study."
+readme = "README.md"
+requires-python = ">=3.11"
+# The audit package (mas-channel-audit, tag audit-final) is installed separately as an
+# editable checkout because it reads its frozen prompts from the repository, not from
+# the installed package; see README. It brings pydantic, numpy, pyyaml and math-verify
+# (pinned exactly there, because a grader upgrade can change which answers are correct).
+dependencies = [
+    "pydantic>=2.7,<3",
+    "numpy>=1.26",
+    "pyyaml>=6",
+    "math-verify==0.9.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+# GPU and data extras are unpinned on purpose: the sandbox images ship their own torch,
+# and every generation records the backend version it was produced with.
+vllm = ["vllm"]
+hf = ["torch", "transformers", "accelerate"]
+data = ["datasets", "huggingface_hub"]
+figures = ["matplotlib>=3.8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["E501", "B018"]
