@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable, Mapping, Sequence
+from pathlib import Path
 
 from channel_audit.extract import extract_answer
 from channel_audit.grade import is_correct
@@ -97,3 +98,48 @@ def load_matharena(name: str, revision: str) -> list[Problem]:
     repo, filename, prefix = MATHARENA[name]
     path = hf_hub_download(repo, filename, repo_type="dataset", revision=revision)
     return matharena_problems(pq.read_table(path).to_pylist(), prefix, name)
+
+
+# ---- pinning the harness set ------------------------------------------------------
+
+HARNESS_MANIFEST = "harness.json"
+
+
+def pin_harness(out_dir, revision_of, loader) -> dict:
+    """Write the harness manifest: revision, size and content hash of each set.
+
+    ``revision_of(repo)`` returns a dataset's current commit and ``loader(name,
+    revision)`` its problems. An existing manifest is never changed.
+    """
+    path = Path(out_dir) / HARNESS_MANIFEST
+    if path.exists():
+        raise FileExistsError(f"{path} exists: the harness set is already pinned")
+    manifest: dict = {}
+    for name in HARNESS_SETS:
+        revision = revision_of(MATHARENA[name][0])
+        problems = loader(name, revision)
+        bad = check_golds(problems)
+        if bad:
+            raise GoldError(f"{name}: golds a boxed answer cannot match: {bad}")
+        manifest[name] = {
+            "repo": MATHARENA[name][0],
+            "revision": revision,
+            "n": len(problems),
+            "content_sha256": content_sha256(problems),
+        }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, indent=1, sort_keys=True) + "\n", "utf-8")
+    return manifest
+
+
+def load_harness(out_dir, loader) -> list[Problem]:
+    """The pinned harness problems; the content must match the manifest."""
+    manifest = json.loads((Path(out_dir) / HARNESS_MANIFEST).read_text("utf-8"))
+    problems: list[Problem] = []
+    for name in HARNESS_SETS:
+        entry = manifest[name]
+        got = loader(name, entry["revision"])
+        if len(got) != entry["n"] or content_sha256(got) != entry["content_sha256"]:
+            raise GoldError(f"{name} no longer matches its pinned content")
+        problems += got
+    return problems

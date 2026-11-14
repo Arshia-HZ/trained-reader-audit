@@ -156,3 +156,47 @@ def test_a_missing_stratum_is_not_run_and_fails_the_gate():
     v = g2_verdict(synthetic(only_c2), 4, n_boot=200)
     assert v["passed"] is False
     assert v["checks"]["c0_reader_below_candidate_free"]["status"].startswith("not run")
+
+
+def fake_loader(name, revision):
+    prefix = {"aime_2025": "aime25", "hmmt_feb_2025": "hmmt25"}[name]
+    return externals.matharena_problems(ROWS, prefix, name)
+
+
+def test_the_harness_set_is_pinned_once_and_verified_on_load(tmp_path):
+    manifest = externals.pin_harness(tmp_path, lambda repo: "a" * 40, fake_loader)
+    assert set(manifest) == set(externals.HARNESS_SETS)
+    assert (
+        manifest["aime_2025"]["n"] == 2
+        and manifest["aime_2025"]["revision"] == "a" * 40
+    )
+    with pytest.raises(FileExistsError):
+        externals.pin_harness(tmp_path, lambda repo: "b" * 40, fake_loader)
+    problems = externals.load_harness(tmp_path, fake_loader)
+    assert [p.problem_id for p in problems] == [
+        "aime25-01",
+        "aime25-02",
+        "hmmt25-01",
+        "hmmt25-02",
+    ]
+
+
+def test_a_changed_set_is_caught_on_load(tmp_path):
+    externals.pin_harness(tmp_path, lambda repo: "a" * 40, fake_loader)
+
+    def changed(name, revision):
+        rows = [{**ROWS[0], "answer": "71"}, ROWS[1]]
+        return externals.matharena_problems(rows, "x", name)
+
+    with pytest.raises(externals.GoldError, match="no longer matches"):
+        externals.load_harness(tmp_path, changed)
+
+
+def test_pinning_refuses_a_gold_a_box_cannot_match(tmp_path):
+    def bad_loader(name, revision):
+        return externals.matharena_problems(
+            [{"problem_idx": "1", "problem": "Q", "answer": "{1"}], "p", name
+        )
+
+    with pytest.raises(externals.GoldError, match="cannot match"):
+        externals.pin_harness(tmp_path, lambda repo: "a" * 40, bad_loader)

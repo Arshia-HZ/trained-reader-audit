@@ -25,8 +25,8 @@ check, pools, baselines) is in progress. No sealed test set has been scored.
 | R0 | Repository split, design decisions, scaffold, Stage 0 carried over | done |
 | R1 | Set manifests; Stage 0 code under tests; dev pool loader | done |
 | R2 | Dev baselines (stored-confidence vote, early-stopping SC), prompt lengths | done |
-| R3 | Reader harness: candidate sets, strata, prompts, controls, answer swap, planner | |
-| R4 | GPU jobs of Stage 1 (G2 harness check, pools, contamination probe, untrained readers) | |
+| R3 | Reader harness: candidate sets, strata, prompts, controls, answer swap, planner, G2 job | done |
+| R4 | GPU jobs of Stage 1 (G2 harness check, pools, contamination probe, untrained readers) | G2 job ready (`notebooks/stage1_molab.py`); needs a molab session |
 | R5 | Stage 2: train pools, GRPO pilot, freeze | |
 | R6 | Stage 3: training runs, evaluation, frozen analysis | |
 

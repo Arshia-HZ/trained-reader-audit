@@ -1,0 +1,14 @@
+{
+ "aime_2025": {
+  "content_sha256": "4e615c0a7acc903dbb9e5ea4dee4b32eefc910a7de28277969f28280c1db5d06",
+  "n": 30,
+  "repo": "MathArena/aime_2025",
+  "revision": "c94da77eb22bbd6439e62a323bec18493a421302"
+ },
+ "hmmt_feb_2025": {
+  "content_sha256": "c7c834a91cd1c5b004662e6eaa12263d4f9dbd3d07ff2ecc9e9f24d144905344",
+  "n": 30,
+  "repo": "MathArena/hmmt_feb_2025",
+  "revision": "6fdc4277120810ff75aa22d2d5489b91f7a262a1"
+ }
+}
