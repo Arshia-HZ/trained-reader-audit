@@ -23,8 +23,8 @@ check, pools, baselines) is in progress. No sealed test set has been scored.
 | Milestone | Work | State |
 | --- | --- | --- |
 | R0 | Repository split, design decisions, scaffold, Stage 0 carried over | done |
-| R1 | Set manifests; Stage 0 code under tests; dev pool loader | in progress |
-| R2 | Dev baselines (stored-confidence vote, early-stopping SC), prompt lengths | |
+| R1 | Set manifests; Stage 0 code under tests; dev pool loader | done |
+| R2 | Dev baselines (stored-confidence vote, early-stopping SC), prompt lengths | done |
 | R3 | Reader harness: candidate sets, strata, prompts, controls, answer swap, planner | |
 | R4 | GPU jobs of Stage 1 (G2 harness check, pools, contamination probe, untrained readers) | |
 | R5 | Stage 2: train pools, GRPO pilot, freeze | |

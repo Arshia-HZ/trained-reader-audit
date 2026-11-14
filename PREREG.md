@@ -70,7 +70,7 @@ rather than from re-solving, voting or training alone?
 | D11 | Priorities | Qwen3-0.6B reader: Must (the FLOP-accounting arm). Joint arm: Must, one seed. AggLM-1.7B checkpoint: Must if public (check in Stage 1), otherwise noted as unavailable. | The roadmap listed the joint arm and 0.6B as Must; the AggLM checkpoint's availability is unknown. |
 | D12 | Generation stack | Every generation that is evaluated (candidate pools, readers, solver-GRPO samples, the contamination probe) uses vLLM 0.33.0 in fp16 on the RTX PRO 6000, as the dev pools did. Training is bf16. A bf16 checkpoint is cast to fp16 for evaluation after a sanity check (no NaN or inf; greedy agreement with bf16 on 200 prompts is reported). Training rollouts use the training framework's own engine and are never evaluated. | The dev pools are fp16; mixing precisions would put a stack difference inside the comparison. |
 | D13 | Contamination probe | Runs in Stage 1 on the primary and secondary problem texts with Qwen3-1.7B and Qwen3-1.7B-Base: greedy completion of the last 40% of the statement from its first 60%, normalised exact match. It reads text only. No problem is removed because of it. H2 is additionally reported on the problems where the probe fails. | Independent of any arm or outcome. |
-| D14 | Candidate handling | Candidates are never filtered by outcome. A truncated candidate is shown as generated (it has no answer: "(no final answer)" in answer-only). Each candidate is cut to its first 1,536 tokens inside the reader prompt (K = 8: prompt cap about 13k tokens, `max_model_len` about 16k, to be confirmed by the dev lengths of section 7). `Confidence: N` lines are removed from shown text, as the audit did for `full_solution`. Candidate order is a seeded shuffle. | 2608.18379 cut candidates at their first answer; this study shows them whole. |
+| D14 | Candidate handling | Candidates are never filtered by outcome. A truncated candidate is shown as generated (it has no answer: "(no final answer)" in answer-only). Each candidate is cut to its first 1,536 tokens inside the reader prompt (K = 8: the longest dev prompt is about 13.1k tokens, so `max_model_len` = 16,384; section 7). `Confidence: N` lines are removed from shown text, as the audit did for `full_solution`. Candidate order is a seeded shuffle. | 2608.18379 cut candidates at their first answer; this study shows them whole. |
 | D15 | Candidate sets | K candidates drawn without replacement from the problem's pool by a seeded shuffle keyed on (problem, draw, K). Evaluation: 4 draws × 2 reader replicates per problem and arm. Strata c0, c1, c2+ count the correct candidates (0, 1, 2 or more); the label is computed after the draw and never used to choose sets for evaluation. | |
 | D16 | Controls | Candidate-free: the reader template with the candidates block removed (same instructions otherwise). Answer-only: the K extracted answers. Placebo: for each real set, K donor candidates from other problems of the same subject and level, nearest in total token length, in the same slots; the stratum label is inherited from the replaced set. Duplicate: the first candidate repeated K times. Single-slot: one candidate, other slots empty. Deduplicated input: one candidate per distinct answer, in decreasing frequency, counts hidden. Answer swap: see section 4. | |
 | D17 | Checkpoint rule | Best of steps 100, 200 and 300 by dev gain over matched SC (generated-only rule), ties to the later step; never the peak of a continuous curve. | Decided now so it cannot move after any test score exists. |
@@ -78,6 +78,7 @@ rather than from re-solving, voting or training alone?
 | D19 | MATH-P-Hard seeds | Problems that seeded MATH-P-Hard items are removed from the train pools; no test item is dropped. | Costs a few training problems, keeps all 279 test items. |
 | D20 | Scoring | The boxed final answer, extracted and graded with the audit's `extract.py` and `grade.py` (including the confidence-box rule); no fallback. Candidates and readers are scored the same way. | 2608.18379's answer-only result flips with the scoring rule. |
 | D21 | Test-set size | The primary set is fixed at its 972 problems; the confirm problems beyond it are not used. With the audit's paired SD (0.16 to 0.20), 972 problems give a 95% half-width of about 1.1 points and 80% power at about 1.6 points (the dev SD of the reader replaces this at the freeze). | Only 972 level-5 problems exist; level 3–4 would change the population. |
+| D22 | Adaptive SC | Early-stopping SC (ESC) is the strongest zero-cost baseline: on dev it gains 1.7 to 3.7 points over plain SC at equal mean samples. The headline of H1a and H1b stays against plain SC at matched cost, as in the audit and in the trained-aggregator literature. Every H1 result is also reported against the ESC frontier at the reader's cost, as an estimate with its interval. H6 is tested against ESC. A vote weighted by stated confidence is reported and is not a hypothesis (it adds 0.0 to 0.2 points on dev). | `docs/dev_baselines.md`: at K = 8 the ESC frontier at 9 samples is 1.8 points above plain SC (1.5 on level 5), so a reader must beat the vote by 2.3 points on level 5 to tie it, not 0.8. |
 
 ## 4. Hypotheses and tests
 
@@ -160,9 +161,16 @@ dated, labelled deviation published beside the original.
   2.3; K = 8 headroom 13.9, break-even 0.8. Prompt-inclusive break-even 6.4 (K = 4) and 3.6
   (K = 8). G1 passes at K = 8 (needed gain 2.3; expected 3.8 to 7.9). Assumes the reader
   writes one sample; the recovery range is AggLM's on thinking candidates.
-- **Dev baselines (2026-11-14), `docs/dev_baselines.md`.** Computed on dev only: the vote
-  weighted by the stored `Confidence: N`, early-stopping SC curves, and prompt lengths of
-  K = 8 sets. They inform the freeze (H6's ESC settings, `max_model_len`) and are not tests.
+- **Dev baselines (2026-11-14), `docs/dev_baselines.md`.** Computed on dev only, with no
+  extra generation; they inform the freeze and are not tests. (1) A vote weighted by the
+  stored `Confidence: N` adds +0.2 (K = 4) and +0.0 (K = 8) points over the plain vote.
+  (2) Early-stopping SC beats plain SC at equal mean samples by 3.7 points at about 4
+  samples and 1.7 at about 9.6; the ESC frontier at the cost of a K = 8 reader (9 samples)
+  is 78.3% against 76.6% for plain SC (level 5: 63.3% against 61.8%), so a K = 8 reader
+  must beat the vote by 2.3 points on level 5 to tie it (D22). Against that bar the G1
+  expectation (3.8 to 7.9) passes at the high end and sits at the line (3.75 against 3.8)
+  at the low end. (3) Reader prompts at K = 8 reach 13.1k tokens with candidates cut at
+  1,536, so `max_model_len` = 16,384 (D14).
 
 ## 8. Stages and gates
 
@@ -187,3 +195,6 @@ GRPO hyperparameters and framework; the training decontamination rule; the train
 - 2026-11-14: draft started; decisions D1 to D21 (section 3) taken by the coding agent at
   the owner's request; K = 8 agreed by the owner. Stage 0 recorded. Nothing sealed has been
   touched.
+- 2026-11-14 (later): the dev baselines of section 7 were computed; D22 added (adaptive SC
+  as a reported baseline and H6's comparator); D14's context window fixed at 16,384.
+  Study sets built (`data/sets/`: dev 600, primary 972, reserve 1,678).

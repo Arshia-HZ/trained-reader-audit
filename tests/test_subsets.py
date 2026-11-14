@@ -139,6 +139,7 @@ def test_group_answers_pools_equivalent_answers_and_counts_none():
     assert g.sizes == (2, 2)
     assert g.correct == (True, False)
     assert g.n_none == 1 and g.inconsistent == 0 and g.n == 5
+    assert g.labels == (0, 0, 1, None, 1)
 
 
 def test_group_answers_flags_a_grade_that_disagrees_with_its_group():

@@ -24,12 +24,15 @@ class AnswerGroups:
     ``sizes[i]`` samples share answer group ``i``; ``correct[i]`` says whether that
     answer is right; ``n_none`` samples have no parsable answer and never vote.
     ``inconsistent`` counts samples whose own grade disagrees with their group's.
+    ``labels`` gives each sample's group (None if unparsable) when the groups were
+    built from samples; statistics that need sample-level weights read it.
     """
 
     sizes: tuple[int, ...]
     correct: tuple[bool, ...]
     n_none: int
     inconsistent: int = 0
+    labels: tuple[int | None, ...] = ()
 
     @property
     def n(self) -> int:
@@ -59,6 +62,7 @@ def group_answers(
         correct=tuple(group_correct),
         n_none=sum(1 for label in labels if label is None),
         inconsistent=inconsistent,
+        labels=tuple(labels),
     )
 
 
