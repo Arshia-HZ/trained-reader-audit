@@ -1,8 +1,9 @@
 """Cost rules: how many self-consistency samples a reader costs (PREREG section 5).
 
-Planning version, from mean token counts: the reader is assumed to write about one
-sample. The per-problem exact version, from the tokens a reader actually used, is added
-with the reader harness.
+Two versions. The planning functions (``planning_k_star``) work from mean token counts
+and assume the reader writes about one sample; Stage 0 used them. The per-problem
+functions (``reader_cost``, ``sample_cost``, ``k_star``) use the tokens a reader and its
+candidates actually used and are what the confirmatory analysis uses.
 """
 
 from __future__ import annotations

@@ -186,6 +186,15 @@ def family1_rows(
     )
     row("H4b (swap, primary)", n_sw, sd_sw, "two-sided", None, lambda lv: float("nan"))
     if draws is not None:
+        sd_pooled = sd_binomial("diff", replicates * draws)
+        row(
+            "H3, all sets pooled (alternative), true diff 0",
+            n_primary,
+            sd_pooled,
+            "noninferiority",
+            h3_margin,
+            lambda lv: noninferiority_power(n_primary, sd_pooled, h3_margin, 0.0, lv),
+        )
         sd_noise = sd_binomial("vs_fixed", replicates * draws)
         row(
             "H1a, noise-only SD",
@@ -196,3 +205,44 @@ def family1_rows(
             lambda lv: superiority_power(n_primary, sd_noise, h1_effect, lv),
         )
     return rows
+
+
+# ---- the sizing rule of PREREG section 6.3 ------------------------------------------
+
+DRAW_OPTIONS = (4, 8, 16)
+POWER_TARGET = 0.70
+RULE_EFFECTS = {"H1a": 0.015, "H1b": 0.015, "H2": 0.10}
+H4A_MARGIN = 0.01
+
+
+def draws_by_rule(
+    measured: Mapping[int, Mapping[str, tuple[float, float]]],
+    target: float = POWER_TARGET,
+    alpha: float = ALPHA,
+    m: int = FAMILY1_SIZE,
+) -> dict:
+    """The number of evaluation draws per problem, by the pre-stated power rule.
+
+    ``measured[d][h]`` is ``(problems, sd)`` of hypothesis h (H1a, H1b, H2, H4a) with
+    d draws, as measured on dev with the untrained reader. The result is the smallest d
+    for which every one of them has at least ``target`` power at the Holm worst case
+    (``alpha / m``). If none does, it is the largest d, and the hypotheses still short
+    of the target are listed as underpowered for the owner's decision at the freeze.
+    """
+    worst = alpha / m
+
+    def power_of(name: str, n: float, sd: float) -> float:
+        if name == "H4a":
+            return noninferiority_power(n, sd, H4A_MARGIN, 0.0, worst)
+        return superiority_power(n, sd, RULE_EFFECTS[name], worst)
+
+    table = {
+        d: {name: power_of(name, n, sd) for name, (n, sd) in measured[d].items()}
+        for d in sorted(measured)
+    }
+    for d, powers in table.items():
+        if all(p >= target for p in powers.values()):
+            return {"draws": d, "underpowered": [], "power": table}
+    last = max(table)
+    short = [name for name, p in table[last].items() if p < target]
+    return {"draws": last, "underpowered": short, "power": table}

@@ -83,3 +83,30 @@ def sc_at_cost(curve: np.ndarray, k_star: float) -> float | None:
     if not 1 <= k_star <= len(curve):
         return None
     return interpolate(curve, k_star)
+
+
+# ---- early-stopping SC on the test sets (PREREG D23) ------------------------------
+
+ESC_DRAWS = 500
+ESC_SALT = "reader-audit/esc/v1"
+
+
+def esc_seed(problem_id: str, window: int, max_samples: int) -> int:
+    """The seed of an ESC estimate: the salt, the problem and the ESC setting."""
+    key = f"{ESC_SALT}|{problem_id}|{window}|{max_samples}"
+    return int.from_bytes(hashlib.sha256(key.encode()).digest()[:8], "big")
+
+
+def esc_estimate(
+    groups: AnswerGroups,
+    problem_id: str,
+    window: int,
+    max_samples: int,
+    n_orders: int = ESC_DRAWS,
+) -> tuple[float, float]:
+    """(mean samples drawn, mean credit) of ESC over ``n_orders`` seeded orders."""
+    from reader_audit.baselines import esc_means
+
+    return esc_means(
+        groups, window, max_samples, n_orders, esc_seed(problem_id, window, max_samples)
+    )

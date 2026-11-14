@@ -13,7 +13,9 @@ Phase 1 is archived at [`causal-mas-distill`](https://github.com/Arshia-HZ/causa
 
 Stage 0 is done: on the audit's 600 dev problems, the break-even for a K = 8 reader is
 0.8 points (generated tokens) and the gate G1 passes. The design decisions, hypotheses and
-gates are in [`PREREG.md`](PREREG.md) (a draft until the Stage 2 freeze); the plan is
+gates are in [`PREREG.md`](PREREG.md) (a draft until the Stage 2 freeze, revised after the
+owner's review on 2026-11-14: see its section 10 and the open items O1 to O4 in
+section 9); the plan is
 [`docs/ROADMAP.md`](docs/ROADMAP.md); the literature check behind it is
 [`docs/research/`](docs/research/trained_aggregators_beyond_voting.md). Stage 1 (harness
 check, pools, baselines) is in progress. No sealed test set has been scored.
@@ -26,6 +28,7 @@ check, pools, baselines) is in progress. No sealed test set has been scored.
 | R1 | Set manifests; Stage 0 code under tests; dev pool loader | done |
 | R2 | Dev baselines (stored-confidence vote, early-stopping SC), prompt lengths | done |
 | R3 | Reader harness: candidate sets, strata, prompts, controls, answer swap, planner, G2 job | done |
+| R3b | Rules of the PREREG review: swap populations, test-set SC, inference and Holm power, seed-conditional schedule, probe protocol | done |
 | R4 | GPU jobs of Stage 1 (G2 harness check, pools, contamination probe, untrained readers) | G2 job ready (`notebooks/stage1_molab.py`); needs a molab session |
 | R5 | Stage 2: train pools, GRPO pilot, freeze | |
 | R6 | Stage 3: training runs, evaluation, frozen analysis | |

@@ -88,3 +88,16 @@ def test_reading_the_curve_at_a_cost_interpolates_and_flags_out_of_range_costs()
 
 def test_the_documented_draw_count_is_the_default():
     assert SC_DRAWS == 2000
+
+
+def test_esc_estimates_are_seeded_from_the_problem_and_the_setting():
+    from reader_audit.sc_estimate import ESC_DRAWS, esc_estimate, esc_seed
+
+    g = groups_of(["1", "2", "1", "3", "1", "2", "1", "1", "4", "1"])
+    a = esc_estimate(g, "p1", 2, 8, n_orders=40)
+    assert a == esc_estimate(g, "p1", 2, 8, n_orders=40)
+    assert esc_seed("p1", 2, 8) != esc_seed("p2", 2, 8)
+    assert esc_seed("p1", 2, 8) != esc_seed("p1", 4, 8)
+    assert ESC_DRAWS == 500
+    samples, credit = a
+    assert 2 <= samples <= 8 and 0.0 <= credit <= 1.0

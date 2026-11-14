@@ -14,6 +14,7 @@
 | H3 (c2+), true diff 0 | 682 | 0.262 | 3.5 | 2.8 | 25.9 | 51.2 |
 | H4a (c2+), true diff 0 | 682 | 0.186 | 2.5 | 2.0 | 10.9 | 29.0 |
 | H4b (swap, primary) | 505 | 0.413 | 6.4 | 5.1 | - | - |
+| H3, all sets pooled (alternative), true diff 0 | 972 | 0.250 | 2.8 | 2.2 | 44.3 | 70.3 |
 | H1a, noise-only SD | 972 | 0.177 | 2.0 | 1.6 | 50.3 | 75.3 |
 
 ## 8 draws per problem
@@ -28,6 +29,7 @@
 | H3 (c2+), true diff 0 | 706 | 0.187 | 2.4 | 2.0 | 58.2 | 81.2 |
 | H4a (c2+), true diff 0 | 706 | 0.132 | 1.7 | 1.4 | 26.6 | 52.1 |
 | H4b (swap, primary) | 533 | 0.301 | 4.5 | 3.6 | - | - |
+| H3, all sets pooled (alternative), true diff 0 | 972 | 0.177 | 2.0 | 1.6 | 81.3 | 94.1 |
 | H1a, noise-only SD | 972 | 0.125 | 1.4 | 1.1 | 86.5 | 96.3 |
 
 ## 16 draws per problem
@@ -42,4 +44,5 @@
 | H3 (c2+), true diff 0 | 720 | 0.133 | 1.7 | 1.4 | 92.0 | 98.1 |
 | H4a (c2+), true diff 0 | 720 | 0.094 | 1.2 | 1.0 | 58.6 | 81.5 |
 | H4b (swap, primary) | 551 | 0.215 | 3.2 | 2.6 | - | - |
+| H3, all sets pooled (alternative), true diff 0 | 972 | 0.125 | 1.4 | 1.1 | 99.1 | 99.9 |
 | H1a, noise-only SD | 972 | 0.088 | 1.0 | 0.8 | 99.6 | 100.0 |

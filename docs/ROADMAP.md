@@ -14,8 +14,8 @@ This revision applies the seventeen ranked changes in [Trained aggregators beyon
 - **K is a design variable.** Training uses mixed K, and the K sweep is now Must.
 - **New controls:** answer swap, placebo on every stratum, and position and length bias.
 - **New zero-cost baselines:** DeepConf-offline, self-certainty, a stored-confidence vote and adaptive SC.
-- **Test sets:** already-seen problems excluded, a contamination probe, MATH-P-Hard, a 93-problem post-release pool and one pinned generation stack.
-- **Statistics:** H1 is a superiority test, with two Holm families, ≥3 seeds and a nested bootstrap. Stage 1 never touches the primary set.
+- **Test sets:** already-seen problems excluded, a contamination probe (run after the freeze, PREREG D13), MATH-P-Hard, a 93-problem post-release pool and one pinned generation stack.
+- **Statistics:** H1 is a superiority test decided by a Holm-adjusted p-value (PREREG D24), with two Holm families, 3 or 5 seeds and a problem-level paired bootstrap. Stage 1 never touches the primary set.
 - **Dropped:** distillation, two training ablations, RSA beyond T = 3, and the channel and critic chapters.
 - **The budget is about 1.8–3.7 GPU-weeks** (unmeasured). Citations are fixed, and a new repository is recommended.
 
@@ -25,13 +25,21 @@ This roadmap is the plan. [`PREREG.md`](../PREREG.md) is the binding record, and
 
 - **Repository split.** The audit is closed at tag `audit-final`. The reader study lives here and imports the audit's grader, extractor, seeds, store and accounting.
 - **Stage 0 is done.** G1 passes at K = 8 on level-5 dev under the generated-only rule, so K_H1 = 8 ([Stage 0 record](stage0/STAGE0_REPORT.md)).
-- **The open design questions are decided** (PREREG section 3, D1 to D21, marked for the owner's review before the freeze). The ones that change this text:
+- **The open design questions are decided** (PREREG section 3, D1 to D22, marked for the owner's review before the freeze). The ones that change this text:
   - H1b (reader against solver-GRPO SC) is its own test on the primary set; nothing is pooled across primary and secondary.
   - Every set except dev and the harness set stays sealed through Stage 1. Untrained readers run on dev and the harness set only.
   - H4b is two-sided; H4a is a do-no-harm non-inferiority test.
   - Three seeds per main arm, five if a 300-step run measures at most 20 GPU-hours.
   - The joint arm (one seed) and the 0.6B reader are Must. Generation is fp16 on vLLM 0.33.0; training is bf16.
   - The checkpoint rule (best of steps 100, 200, 300 on dev) and the factorial's cut date (2027-01-17) are fixed now.
+- **Revised after the owner's PREREG review (2026-11-14; PREREG section 10, R1 to R10).** Where the text below still differs, PREREG wins. What changed:
+  - The contamination probe moved from Stage 1 to after the freeze, with a frozen protocol (D13).
+  - Candidates over the cap are cut in the middle with the marker counted inside it; generation-truncated and prompt-truncated candidates are counted apart (D14).
+  - H3 is a non-inferiority hypothesis ("not more than 2 points worse"). The answer-swap population is the sets where the correct answer was the strict plurality, with fixed tie-breaking (D25).
+  - SC on the 32-sample test pools is a Monte Carlo estimate with fixed parameters, exact only on dev (D23).
+  - Every hypothesis is decided by a Holm-adjusted p-value on the two-sided scale, not by a stand-alone interval, and the power is recomputed under Holm (D24; PREREG 6.3).
+  - Stage 3 follows the seed rule (3 or 5 seeds, PREREG 8.1), and G4 distinguishes H1a from H1b (PREREG 4.1).
+  - Open for the owner: the number of evaluation draws, the form of H3 and the margin of H4a (PREREG section 9, O1 to O4).
 
 ## Verdict
 
@@ -133,12 +141,12 @@ H1 is the positive result. H2–H4 make Part A defensible. H5 and H6 cover Part 
 **Family 1, Part A**
 
 1. **H1, positive effect.** A Qwen3-1.7B GRPO reader, reading K_H1 candidates from base Qwen3-1.7B, beats base SC at per-problem matched generated tokens on the primary set. K_H1 ∈ {4, 8} is fixed at G1.
-   - The test is superiority: the nested paired bootstrap 95% CI lies above 0. The planning effect is 1.5 points. It sizes the test set and is not a threshold on the point estimate. A "≥ 1.5 and CI > 0" test fails half the time when the true effect is exactly 1.5.
-   - Second clause: the reader also beats SC from the stronger solver-GRPO variant, chosen on dev. Pool this clause over the primary and secondary sets, or pre-register it as non-inferiority. The Nov 12 1.0-point margin had only about 40–55% power on the primary set (the report's calculation).
+   - The test is superiority, decided by the Holm-adjusted p-value of the problem-level paired bootstrap (PREREG D24); the 95% interval is the effect estimate, not the decision. The planning effect is 1.5 points. It sizes the test set and is not a threshold on the point estimate. A "≥ 1.5 and CI > 0" test fails half the time when the true effect is exactly 1.5. At SD 0.18 the power at 1.5 points is 74% for one unadjusted test and 48% at the Holm worst case (PREREG 6.3).
+   - Second clause, now its own test H1b: the reader also beats SC from the stronger solver-GRPO variant, chosen on dev, on the primary set (not pooled with the secondary set; PREREG D4).
    - Report H1 under the other two cost rules as pre-registered estimates.
-2. **H2, it reads rather than re-solves.** After training, the reader's gain over its own candidate-free fresh solve grows at c1 by at least 10 points over the untrained reader's. Its candidate-free accuracy rises by less than its full-input accuracy. Pre-registered prediction: the gain at c0 stays at or below 0. Report H2 split by the contamination probe's outcome.
-3. **H3, the form effect shrinks, in each stratum.** With placebo candidates, the trained reader scores within 2 points of its own candidate-free accuracy (non-inferiority) in each stratum. 2608.18379's −16.4 is a c0-only figure, so only the c0 cell compares with it. The audit's −14.0 is not comparable: its reference is self-reflection, not a candidate-free solve.
-4. **H4, conformity drops without losing the vote.** At c2+ the trained reader is non-inferior to plurality voting (margin 1 point). Its copy rate falls below the untrained reader's and the deduplicated-input baseline's. Also pre-register TTT-Consolidate's competing prediction: RL *increases* reliance on answer frequency, so the trained reader loses more than the untrained one under the answer swap. The answer-swap contrast decides between them.
+2. **H2, it reads rather than re-solves.** After training, the reader's gain over its own candidate-free fresh solve grows at c1 by at least 10 points over the untrained reader's. Its candidate-free accuracy rises by less than its full-input accuracy. Pre-registered prediction: the gain at c0 stays at or below 0. Report H2 also on the problems the contamination probe (run after the freeze, PREREG D13) does not flag for the studied model.
+3. **H3, the form effect shrinks, in each stratum (non-inferiority).** With placebo candidates, the trained reader is not more than 2 points worse than its own candidate-free accuracy in each stratum (an intersection test, not an equivalence test; PREREG section 4 and O2). 2608.18379's −16.4 is a c0-only figure, so only the c0 cell compares with it. The audit's −14.0 is not comparable: its reference is self-reflection, not a candidate-free solve.
+4. **H4, conformity drops without losing the vote.** At c2+ the trained reader is non-inferior to plurality voting (margin 1 point). Its copy rate falls below the untrained reader's and the deduplicated-input baseline's. Also pre-register TTT-Consolidate's competing prediction: RL *increases* reliance on answer frequency, so the trained reader loses more than the untrained one under the answer swap. The answer-swap contrast, two-sided, on the sets where the correct answer was the strict plurality (PREREG D25), decides between them.
 
 **Family 2, Part B and the gate**
 
@@ -184,7 +192,7 @@ The confirm problems beyond the first 600 were never generated on; they are the 
 
 Metrics, all computed per problem and then averaged:
 
-- **Accuracy:** the boxed final answer under `math_verify`, with the audit's confidence-box rule. Pre-register this rule, because 2608.18379's answer-only result flips with the scoring rule. Average over 4 candidate-set draws × 2 replicates per problem.
+- **Accuracy:** the boxed final answer under `math_verify`, with the audit's confidence-box rule. Pre-register this rule, because 2608.18379's answer-only result flips with the scoring rule. Average over the candidate-set draws (4, 8 or 16 on the primary set, fixed at the freeze by PREREG 6.3) × 2 replicates per problem.
 - **Accuracy against cost, on three axes:** generated tokens (primary, as in the audit); parameter-weighted prompt + generated tokens, with SC's own prompt tokens counted; and measured GPU-seconds in vLLM, with prefix caching on for SC. FLOP-only accounting overrates small models, so wall-clock time is the tie-breaker ([Kinetics](https://arxiv.org/abs/2506.05333v2)).
 - **Gain over a fresh solve:** reader with candidates minus reader without, by stratum c0/c1/c2+.
 - **Recovery and retention:** the share of vote failures fixed and of vote successes kept, as in 2610.21290.
@@ -234,10 +242,10 @@ As before, the first training run starts after about two weeks of cheap checks. 
 | Stage | When | Work | Gate | Pass condition | If it fails |
 | --- | --- | --- | --- | --- | --- |
 | 0 | Days 1–3 | Break-even on the dev logs; design pre-registration; AggLM checks | G1 break-even | On level-5 dev, for some K ∈ {4, 8} under the generated-only rule: headroom × recovery (27–57%) ≥ break-even + 1.5 | Lead with C2 and Part B from the start; H1 becomes a pre-registered estimate |
-| 1 | Days 4–10 | Harness check; sealed test pools; contamination probe; untrained readers and every baseline, off the primary set; paired SD on dev | G2 harness | Same signs as 2608.18379 at c0 and c2+ | Fix the prompt, extraction or truncation; no training until it passes |
+| 1 | Days 4–10 | Harness check; sealed test pools; untrained readers and every baseline, off the primary set; paired SD on dev; the contamination probe is only rehearsed (on dev and the harness set) | G2 harness | Same signs as 2608.18379 at c0 and c2+ | Fix the prompt, extraction or truncation; no training until it passes |
 | 2 | Days 11–14 | Train pools (16 samples) with mixed-K sets; 20-step throughput pilot, then a 50-step GRPO pilot; GPU-seconds measured; freeze | G3 pilot and freeze | Stable pilot; throughput fits the budget; PREREG and analysis freeze committed | Cut the factorial, then other Should arms. Keep ≥3 seeds for reader and solver-GRPO. |
-| 3 | Weeks 3–5 | Reader ×3 (mixed K), solver-GRPO ×3 (step 300 kept), joint ×2, no-c0 ×1, 0.6B ×1 | — | — | — |
-| 3, evaluation | Week 6 | First touch of the primary set: solver-GRPO pools for the grid; all arms, controls, grid, K sweep and gate on every test set; frozen analysis run once | G4 framing | H1 holds in family 1 | Lead with C2 (Findings or TMLR) |
+| 3 | Weeks 3–5 (3 seeds) or 3–6 (5 seeds) | Reader × n_s (mixed K), solver-GRPO × n_s (step 300 kept), joint ×1, no-c0 ×1, 0.6B ×1, with n_s = 3 or 5 by the seed rule (PREREG D7, 8.1) | — | — | — |
+| 3, evaluation | Week 6 (3 seeds) or 7 (5 seeds) | The contamination probe (frozen protocol); first touch of the primary set: solver-GRPO pools for the grid; all arms, controls, grid, K sweep and gate on every test set; frozen analysis run once | G4 framing | H1a and H1b supported: full C1. H1a only: narrower C1. | H1a not supported: lead with C2 (Findings or TMLR), whatever H1b says (PREREG 4.1) |
 | 4 | Weeks 7–8 | Factorial (pass@k ×1, reader-marginal ×2) against the frozen reader; transfer pass; write-up | Cut rule | Factorial done by the pre-registered date | Drop its contrasts from family 2, untested |
 
 Stage 3 is the result the paper rests on. Every earlier gate protects it from a null caused by a reader that costs more than the headroom can repay, or by a broken harness.
@@ -254,9 +262,9 @@ Stage 3 is the result the paper rests on. Every earlier gate protects it from a 
    - Generate the 32-sample test pools on the pinned stack, about 51M generated tokens. On the primary pools, check only run quality (overflow, truncation, unboxed rate), as in M6.
    - Run the untrained 1.7B and 4B readers with every control and baseline on the dev, secondary and harness sets only. Running them on the primary set before H1–H4 are frozen would mean looking at test data before pre-registering. If the solver clause is pooled over primary and secondary, the secondary set is confirmatory too; then keep Stage 1 to dev and the harness set.
    - Measure the reader's paired SD on dev; it fixes the test-set size.
-   - Run the contamination probe (greedy decoding from a 60% prefix, exact match) on both 1.7B models over the level-5 and OlympiadBench problems. It measures memorisation, not any arm. Pre-register how H2 is split by its outcome before running it.
+   - Rehearse the contamination probe (greedy raw continuation from a 60% prefix, whitespace-insensitive exact match) on dev and the harness set only. It measures memorisation, not any arm, but it is a computation on the problems, so it runs on the primary and secondary sets only after the freeze, with the protocol and the H2 split fixed first (PREREG D13).
 3. **Stage 2, days 11–14: freeze.** After the pilots, freeze H1–H6, every threshold, K_H1, the cost rule for each test, the scoring rule, the checkpoint rule, the test-set size and the factorial's cut rule. Extend the analysis freeze so the new contrast code is hashed, and post a dated amendment.
-4. **Stages 3 and 4.** Stage 3 re-runs the untrained arms on the primary set, since the Stage 1 dev table was only a pilot, with 4 candidate-set draws × 2 replicates. The transfer pass reads Llama-3.2-3B and Qwen2.5-Math-1.5B candidates. The write-up uses the audit as its diagnostic half.
+4. **Stages 3 and 4.** Stage 3 re-runs the untrained arms on the primary set, since the Stage 1 dev table was only a pilot, with the draws of PREREG D15 × 2 replicates. The transfer pass reads Llama-3.2-3B and Qwen2.5-Math-1.5B candidates. The write-up uses the audit as its diagnostic half.
 
 ## Implementation details
 
@@ -268,8 +276,8 @@ Reuse the audit harness as it is: the grader with `math_verify` and the confiden
 
 - Draw 32 samples per test problem and 16 per train problem from base Qwen3-1.7B at temperature 0.7, with the audit's frozen round-0 prompt. Every sample then states `Confidence: N`.
 - Store per-token log-probabilities for DeepConf and self-certainty. For the dev pools, one prefill pass recovers them.
-- Estimate SC at any k by subsampling, so every SC point is free once the pools exist.
-- Cap each candidate at 1,536 tokens inside the reader prompt. 2608.18379 cut candidates at their first answer, so state the difference.
+- Estimate SC at any k by subsampling, so every SC point is free once the pools exist: exact on the 18-sample dev pools, Monte Carlo with fixed parameters on the 32-sample test pools (PREREG D23).
+- Cap each candidate at 1,536 tokens inside the reader prompt, cut in the middle: the last 256 tokens are kept so a finished candidate keeps its final answer, and the marker counts inside the cap (PREREG D14). 2608.18379 cut candidates at their first answer, so state the difference.
 - Use one pinned stack for every pool. The dev pools came from vLLM 0.33.0 in fp16, and the audit saw vLLM outputs change with batch composition. The simplest choice is to keep that stack for all pools and use BF16 only for training.
 
 **Training sets.** For each train problem, draw candidate sets with K ∈ {2, 4, 8} and label each c0, c1 or c2+. Following AggLM, keep every hard set (majority wrong) and mix in easy sets. Check the ratio in the paper: the fetched text says "50% of easy sets", the Nov 12 text said "an equal number". AggLM found hard-only training worse (AIME24 64.22 vs 70.69). Shuffle candidate order, and never label which candidate is the reader's own.
@@ -291,7 +299,7 @@ Reuse the audit harness as it is: the grader with `math_verify` and the confiden
 
 **Factorial.** The pass@k-advantage solver follows ParaGator; pass@k objectives can cost pass@1 ([Tang et al.](https://arxiv.org/html/2503.19595v2)). The reader-marginal solver rewards each trace by the frozen reader's correctness on sampled sets that contain it. Start with SPIRAL's set-average estimator. If variance is high, fall back to the leave-one-out estimator, which [Team-GRPO](https://arxiv.org/html/2611.02404) proves unbiased. Avoid entropy bonuses: 0.005 collapsed training in [Pass@k Training](https://arxiv.org/html/2508.10751v1). A frozen 1.7B reader fits beside training on the 96 GB card ([Qwen docs: verl](https://qwen.readthedocs.io/en/stable/training/verl.html)). Frame it as decomposition at small scale, not as a new method.
 
-**Gate and answer swap.** In the audit, 61.4% of round-0 teams already had at most one distinct answer, so the gate skips many reads. A unanimous-but-wrong set offers the reader only a fresh solve, which in-context aggregators manage under 7% of the time. The answer swap replaces the majority cluster's final answer with a wrong value wherever it appears in its last step, leaving the reasoning intact. A voter follows the swap; a reader recovers the derived answer.
+**Gate and answer swap.** In the audit, 61.4% of round-0 teams already had at most one distinct answer, so the gate skips many reads. A unanimous-but-wrong set offers the reader only a fresh solve, which in-context aggregators manage under 7% of the time. The answer swap, in the sets where the correct answer was the strict plurality and a wrong parsable answer exists, replaces the final boxed answer of every correct candidate with the most frequent wrong answer (ties to the answer shown first), leaving the reasoning intact (PREREG D25). A voter follows the swap; a reader recovers the derived answer.
 
 **Token accounting.** Count each problem's own tokens; do not use averages across problems.
 
@@ -301,12 +309,12 @@ B_{\text{flop}} = \sum_{i=1}^{K} (p_i + g_i) + w \,(p_{\text{read}} + g_{\text{r
 k^{*} = B / \bar{c}_{\text{solve}}
 ```
 
-Here g is generated tokens, p is prompt tokens, and w is the reader's parameter count over the solver's: 1 for the 1.7B reader, about 0.35 for 0.6B, about 4 for the PRM. c̄\_solve is one SC sample's cost under the same rule. The third axis is measured GPU-seconds. SC at fractional k\* is linearly interpolated, as in the audit. The audit's prompt-inclusive contrasts were "not estimable", because budgets passed nine samples. At K = 8 the prompt-inclusive k\* reaches about 17, hence 32 samples per test problem.
+Here g is generated tokens, p is prompt tokens, and w is the reader's parameter count over the solver's: 1 for the 1.7B reader, about 0.35 for 0.6B, about 4 for the PRM. c̄\_solve is one SC sample's cost under the same rule. The third axis is measured GPU-seconds. SC at fractional k\* is linearly interpolated, as in the audit; a problem whose k\* exceeds its pool is not estimable and is counted (PREREG D23). The audit's prompt-inclusive contrasts were "not estimable", because budgets passed nine samples. At K = 8 the prompt-inclusive k\* reaches about 17, hence 32 samples per test problem.
 
 **Statistics.**
 
-- The bootstrap is nested and paired: it resamples problems, then candidate-set draws and replicates within each problem.
-- Run at least three seeds for the reader and solver-GRPO. Compare seed means with a permutation test over seeds and report every seed. With 3 vs 3 seeds there are only 20 relabellings, so the smallest one-sided p is 0.05 (my arithmetic). Treat that test as a required robustness check, or add seeds.
+- The bootstrap is problem-level and paired, as in the audit (replicates and draws are averaged within a problem first); a nested resample of problems, then draws and replicates, is a sensitivity check. The decision is the Holm-adjusted p-value of PREREG D24, and the power is recomputed for the six-hypothesis family under Holm (PREREG 6.3).
+- Run three seeds for the reader and solver-GRPO, or five if a 300-step run measures at most 20 GPU-hours (PREREG D7). Compare seed means with a permutation test over seeds and report every seed. With 3 vs 3 seeds there are only 20 relabellings, so the smallest one-sided p is 0.05; with 5 vs 5, 252 and 0.004. Treat that test as a robustness check, and the sign of every seed as a robustness criterion, never as a substitute for the test.
 - Run every baseline through one harness, and release per-sample outputs ([Chandak et al.](https://safe-lip-9a8.notion.site/Incorrect-Baseline-Evaluations-Call-into-Question-Recent-LLM-RL-Claims-2012f1fbf0ee8094ab8ded1953c15a37)).
 
 **Compute on the RTX PRO 6000.** This budget is the report's extrapolation from the Nov 12 estimate of 15–30 hours per 1.7B GRPO run, with 1.5–2× that for reader-marginal steps. It is unmeasured. Measure throughput in the Stage 2 pilot before committing.
@@ -323,6 +331,8 @@ Here g is generated tokens, p is prompt tokens, and w is the reader's parameter 
 | 0.6B reader | 1 seed | 8–15 |
 | Evaluation of all arms, controls, the grid and the K sweep | — | 48–96 |
 | **Total** | | **≈300–625 h, or ≈1.8–3.7 GPU-weeks** |
+
+This table is the Nov 13 estimate. PREREG 8.1 gives the budget and timeline for both seed counts with the joint arm at one seed: about 283–590 h with 3 seeds and 374–653 h with 5.
 
 **Software.**
 

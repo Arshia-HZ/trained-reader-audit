@@ -103,3 +103,52 @@ def test_the_noise_only_row_shows_what_more_draws_can_buy_for_h1():
     assert many["sd"] == pytest.approx(0.0884, abs=1e-3)  # sqrt(0.25 / 32)
     assert many["power_holm_worst"] > 0.99 > few["power_holm_worst"]
     assert "draws" not in P.family1_rows(DESIGNS, 972, 2)[-1]["hypothesis"]
+
+
+def test_a_pooled_h3_is_far_better_powered_than_the_stratum_wise_intersection():
+    rows = {r["hypothesis"]: r for r in P.family1_rows(DESIGNS, 972, 2, draws=16)}
+    pooled = rows["H3, all sets pooled (alternative), true diff 0"]
+    worst_stratum = min(
+        r["power_holm_worst"] for k, r in rows.items() if k.startswith("H3 (")
+    )
+    assert pooled["power_holm_worst"] > 0.95 > worst_stratum
+
+
+def test_the_sizing_rule_picks_the_smallest_number_of_draws_that_reaches_the_target():
+    measured = {
+        4: {
+            "H1a": (972, 0.18),
+            "H1b": (972, 0.18),
+            "H2": (215, 0.50),
+            "H4a": (682, 0.19),
+        },
+        8: {
+            "H1a": (972, 0.13),
+            "H1b": (972, 0.13),
+            "H2": (257, 0.42),
+            "H4a": (706, 0.13),
+        },
+        16: {
+            "H1a": (972, 0.09),
+            "H1b": (972, 0.09),
+            "H2": (299, 0.33),
+            "H4a": (720, 0.08),
+        },
+    }
+    out = P.draws_by_rule(measured)
+    assert out["draws"] == 16 and out["underpowered"] == []
+    assert out["power"][4]["H1a"] < 0.70 <= min(out["power"][16].values())
+
+
+def test_the_sizing_rule_falls_back_to_the_most_draws_and_names_what_is_short():
+    measured = {
+        4: {"H1a": (972, 0.2), "H2": (215, 0.5), "H4a": (682, 0.25)},
+        16: {"H1a": (972, 0.2), "H2": (299, 0.33), "H4a": (720, 0.25)},
+    }
+    out = P.draws_by_rule(measured)
+    assert out["draws"] == 16 and out["underpowered"] == ["H1a", "H4a"]
+
+
+def test_the_sizing_rule_stops_at_the_first_number_of_draws_that_is_enough():
+    easy = {"H1a": (5000, 0.1), "H2": (2000, 0.2), "H4a": (4000, 0.05)}
+    assert P.draws_by_rule({4: easy, 8: easy, 16: easy})["draws"] == 4
