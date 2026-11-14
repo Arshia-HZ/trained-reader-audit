@@ -39,7 +39,7 @@ This roadmap is the plan. [`PREREG.md`](../PREREG.md) is the binding record, and
   - SC on the 32-sample test pools is a Monte Carlo estimate with fixed parameters, exact only on dev (D23).
   - Every hypothesis is decided by a Holm-adjusted p-value on the two-sided scale, not by a stand-alone interval, and the power is recomputed under Holm (D24; PREREG 6.3).
   - Stage 3 follows the seed rule (3 or 5 seeds, PREREG 8.1), and G4 distinguishes H1a from H1b (PREREG 4.1).
-  - Open for the owner: the number of evaluation draws, the form of H3 and the margin of H4a (PREREG section 9, O1 to O4).
+  - Open for the owner: the margin of H4a and the reading of H1's planning effect (PREREG section 9, O3, O4); the evaluation draws and the pooled H3 were accepted on 2026-11-14 (R11).
 
 ## Verdict
 
@@ -145,7 +145,7 @@ H1 is the positive result. H2–H4 make Part A defensible. H5 and H6 cover Part 
    - Second clause, now its own test H1b: the reader also beats SC from the stronger solver-GRPO variant, chosen on dev, on the primary set (not pooled with the secondary set; PREREG D4).
    - Report H1 under the other two cost rules as pre-registered estimates.
 2. **H2, it reads rather than re-solves.** After training, the reader's gain over its own candidate-free fresh solve grows at c1 by at least 10 points over the untrained reader's. Its candidate-free accuracy rises by less than its full-input accuracy. Pre-registered prediction: the gain at c0 stays at or below 0. Report H2 also on the problems the contamination probe (run after the freeze, PREREG D13) does not flag for the studied model.
-3. **H3, the form effect shrinks, in each stratum (non-inferiority).** With placebo candidates, the trained reader is not more than 2 points worse than its own candidate-free accuracy in each stratum (an intersection test, not an equivalence test; PREREG section 4 and O2). 2608.18379's −16.4 is a c0-only figure, so only the c0 cell compares with it. The audit's −14.0 is not comparable: its reference is self-reflection, not a candidate-free solve.
+3. **H3, the form effect shrinks (non-inferiority).** With placebo candidates, the trained reader is not more than 2 points worse than its own candidate-free accuracy: one pooled test over all sets, strata reported as estimates (not an equivalence test; PREREG section 4, R11). 2608.18379's −16.4 is a c0-only figure, so only the c0 cell compares with it. The audit's −14.0 is not comparable: its reference is self-reflection, not a candidate-free solve.
 4. **H4, conformity drops without losing the vote.** At c2+ the trained reader is non-inferior to plurality voting (margin 1 point). Its copy rate falls below the untrained reader's and the deduplicated-input baseline's. Also pre-register TTT-Consolidate's competing prediction: RL *increases* reliance on answer frequency, so the trained reader loses more than the untrained one under the answer swap. The answer-swap contrast, two-sided, on the sets where the correct answer was the strict plurality (PREREG D25), decides between them.
 
 **Family 2, Part B and the gate**

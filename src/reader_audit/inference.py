@@ -16,7 +16,8 @@ mistaken for a Holm-corrected test:
 5. Holm over the preregistered family, on those p-values; a hypothesis is supported
    when its adjusted p is below 0.05. A hypothesis that was not run counts with p = 1,
    so the family size never shrinks.
-6. An intersection test (H3: every stratum) takes the largest of its components' p.
+6. An intersection test (several components must all hold) takes the largest of its
+   components' p; H3 itself is one pooled test since R11.
 """
 
 from __future__ import annotations

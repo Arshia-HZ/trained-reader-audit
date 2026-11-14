@@ -90,7 +90,7 @@ each said before. D23 to D26 are new.
 | D21 | Test-set size and power (revised, R6) | The primary set is fixed at its 972 problems; the confirm problems beyond it are not used. With the audit's paired SD (0.16 to 0.20) 972 problems give a 95% half-width of about 1.1 points. The smallest true effect found with 80% power is **1.6 points for one unadjusted test (the figure first given) and 2.0 points at the Holm worst case of Family 1** (0.05 / 6 on the two-sided scale; 1.8 to 2.2 for SD 0.16 to 0.20). The dev SD of the reader replaces the placeholder at the freeze (section 6.3). | Only 972 level-5 problems exist; level 3–4 would change the population. The first figure used the unadjusted threshold of a single test. |
 | D22 | Adaptive SC | Early-stopping SC (ESC) is the strongest zero-cost baseline: on dev it gains 1.7 to 3.7 points over plain SC at equal mean samples. The headline of H1a and H1b stays against plain SC at matched cost, as in the audit and in the trained-aggregator literature. Every H1 result is also reported against the ESC frontier at the reader's cost, as an estimate with its interval. H6 is tested against ESC. A vote weighted by stated confidence is reported and is not a hypothesis (it adds 0.0 to 0.2 points on dev). | `docs/dev_baselines.md`: at K = 8 the ESC frontier at 9 samples is 1.8 points above plain SC (1.5 on level 5), so a reader must beat the vote by 2.3 points on level 5 to tie it, not 0.8. |
 | D23 | SC and ESC estimation on test sets (new, R5) | **Dev pools (18 samples): exact**, by summing over answer-count vectors with hypergeometric weights (checked against explicit subset enumeration). **Test pools (32 samples): Monte Carlo, not exact.** For each problem and each integer k = 1..32, R = 2,000 subsets of k samples are drawn uniformly without replacement; the generator is numpy `default_rng` seeded with the first 8 bytes of the sha256 of a fixed salt, the problem id and k, so every arm, model and re-run uses the same subsets; k = 32 is the whole pool and exact. The credit of a subset is the plurality credit (unparsable answers never vote, an m-way tie containing the right answer earns 1/m, answers pooled by the audit's equivalence), averaged over the subsets. At a fractional k\* the credit is interpolated linearly between the estimates at ⌊k\*⌋ and ⌈k\*⌉. A problem whose k\* falls outside [1, 32] is **not estimable** under that cost rule: it is dropped from the tests of that rule, the number dropped is reported, and if more than 2% of the primary problems are dropped under a rule a sensitivity analysis that clips k\* at 32 is reported beside it. ESC (D22) is estimated the same way: 500 random orders of the pool per problem, seeded from the salt, the problem id and the ESC setting; the settings (windows 2, 4, 8; caps 8, 16) are fixed at the freeze. The Monte Carlo standard error is at most 0.011 per estimate and under 0.04 points on a mean over 972 problems, so the bootstrap over problems does not model it. | The review: a 32-sample pool cannot be called exactly enumerated. The exact method takes 0.04 s (9 answer groups, k = 8) to 2.3 s (14 groups, k = 16) per problem and k, hours per set (measured). Implemented in `sc_estimate.py`. |
-| D24 | Inferential procedure (new, R6) | Per problem a paired difference d; B = 10,000 bootstrap resamples of problems give means m\*. **p-values on the two-sided scale**: superiority (null: mean ≤ 0) p = 2 (1 + #{m\* ≤ 0}) / (B + 1); non-inferiority at margin δ (null: mean ≤ −δ) p = 2 (1 + #{m\* ≤ −δ}) / (B + 1); two-sided (null: mean = 0) the audit's two-sided p; all capped at 1. H3 is an intersection test whose p is the largest of its three components. **Holm** within each family of D10 on these p-values; a hypothesis is **supported iff its adjusted p < 0.05**. Intervals are effect estimates, never the decision. The audit's frozen `bootstrap_p` and `holm_adjust` do the arithmetic. For a single hypothesis p < 0.05 on this scale is the same as its 95% interval excluding the null; for Family 1 the smallest p must pass 0.05 / 6 = 0.0083. Calibration is tested by simulation: type I error about 2.5% for the one-sided tests at the edge of their null, 5% for the two-sided one. | The review: an interval above zero is not a Holm-corrected test. Doubling the one-sided p keeps directional and two-sided hypotheses on one scale and keeps D5's original meaning for a single test. Implemented in `inference.py`. |
+| D24 | Inferential procedure (new, R6) | Per problem a paired difference d; B = 10,000 bootstrap resamples of problems give means m\*. **p-values on the two-sided scale**: superiority (null: mean ≤ 0) p = 2 (1 + #{m\* ≤ 0}) / (B + 1); non-inferiority at margin δ (null: mean ≤ −δ) p = 2 (1 + #{m\* ≤ −δ}) / (B + 1); two-sided (null: mean = 0) the audit's two-sided p; all capped at 1. H3 is one pooled non-inferiority test over all sets (R11; before R11 an intersection test over three strata). **Holm** within each family of D10 on these p-values; a hypothesis is **supported iff its adjusted p < 0.05**. Intervals are effect estimates, never the decision. The audit's frozen `bootstrap_p` and `holm_adjust` do the arithmetic. For a single hypothesis p < 0.05 on this scale is the same as its 95% interval excluding the null; for Family 1 the smallest p must pass 0.05 / 6 = 0.0083. Calibration is tested by simulation: type I error about 2.5% for the one-sided tests at the edge of their null, 5% for the two-sided one. | The review: an interval above zero is not a Holm-corrected test. Doubling the one-sided p keeps directional and two-sided hypotheses on one scale and keeps D5's original meaning for a single test. Implemented in `inference.py`. |
 | D25 | Answer swap (new, R4) | **Primary population**: candidate sets with (i) at least one wrong parsable answer and (ii) the correct answer as the **strict plurality** of the original set (more candidates than any wrong answer; a tie does not count). Such sets have at least two correct candidates. **Swap**: every candidate with a correct graded answer has the content of its final boxed answer (the box the audit's extractor returns) replaced by the target; nothing else changes, so the derived value stays visible in the reasoning. **Target**: the most frequent wrong answer, answers pooled by the audit's equivalence; a tie goes to the answer shown first (the order is the seeded shuffle of D15); candidates without a final answer are not wrong answers, never vote and are left as they are. After the swap the target is the strict plurality, so a vote flips from right to wrong. **Drop** = accuracy(reader_full, original set) − accuracy(answer_swap, swapped set), on the same (problem, draw) cells. H4b = two-sided test of drop(R) − drop(U) (problem level). **Secondary** (reported with intervals, not in the family): the broad population, every c2+ set with at least one wrong parsable answer. On dev (level 5, K = 8) 38.5% of sets are in the primary population (52% of problems have one in 4 draws) and 46.7% in the broad one. | The review: sets where the correct answer was tied or outvoted before the swap make a muddled counterfactual. Implemented in `arms.swap_plan` and `reader_eval.swap_cells`; the plan row of every swapped prompt records `correct_plurality`. |
 | D26 | Framing and reporting (new, R8) | Section 4.1: the framing of the study depends on H1a and H1b separately; every result is reported with the baselines and cost rules it was tested against. | The review: H1a alone does not establish superiority over the solver-GRPO baseline. Implemented in `decision.py`. |
 
@@ -116,13 +116,14 @@ prompt), K = 8 unless stated.
 - **H2 (reads, not re-solves).** Superiority, at c1, of [accuracy(R, with candidates) −
   accuracy(R, candidate-free)] − [the same for U]. Planning magnitude 10 points. Secondary:
   the same difference over all strata; and the c0 gain of R stays at or below 0.
-- **H3 (form effect), a non-inferiority hypothesis.** In each stratum, the trained reader
+- **H3 (form effect), a non-inferiority hypothesis (revised, R11).** The trained reader
   under **placebo inputs must not be more than 2 percentage points worse than its own
   candidate-free solve**: the null is mean(accuracy(R, placebo) − accuracy(R,
-  candidate-free)) ≤ −0.02 in the stratum, tested one-sided at margin 0.02. It is an
-  intersection-union test over c0, c1 and c2+ (supported only if all three components are
-  rejected; its p is the largest of the three). It is **not** an equivalence test: a
-  placebo that helps by more than 2 points does not fail it.
+  candidate-free)) ≤ −0.02, tested one-sided at margin 0.02 as **one pooled test over all
+  sets** (problem level). The three strata (c0, c1, c2+) are reported as estimates with
+  intervals, not tested. It is **not** an equivalence test: a placebo that helps by more
+  than 2 points does not fail it. (Before R11 it was an intersection of three stratum
+  tests; `inference.intersection` is kept for such uses.)
 - **H4a (do no harm), a non-inferiority hypothesis.** At c2+, the null is mean(accuracy(R)
   − plurality vote of the same K candidates) ≤ −0.01 (margin 1 point).
 - **H4b (answer frequency).** Two-sided test of drop(R) − drop(U) on the primary swap
@@ -220,11 +221,11 @@ hypotheses, a true difference of 0 for the non-inferiority tests.
 | H1a, H1b (+1.5 points, SD 0.18) | 972 | 2.0 / 2.0 | 48% / 48% | 74% / 74% |
 | H1a with the binomial-noise SD (0.177 / 0.088) | 972 | 2.0 / 1.0 | 50% / 99.6% | 75% / 100% |
 | H2, c1 (+10 points) | 215 / 299 | 11.9 / 6.6 | 62% / 99.6% | 84% / 100% |
-| H3, c0 (non-inferior within 2 points, true 0) | 327 / 393 | 5.6 / 2.8 | 8% / 45% | 24% / 71% |
-| H3, c1 | 215 / 299 | 8.4 / 4.6 | 4% / 13% | 13% / 32% |
-| H3, c2+ | 682 / 720 | 3.5 / 1.7 | 26% / 92% | 51% / 98% |
-| H3, intersection of the three strata | | | 0.1% / 5% | 2% / 22% |
-| H3 as one pooled test over all sets (alternative, O2) | 972 | 2.8 / 1.4 | 44% / 99% | 70% / 99.9% |
+| **H3, one pooled test over all sets (adopted, R11; non-inferior within 2 points, true 0)** | 972 | 2.8 / 1.4 | 44% / 99% | 70% / 99.9% |
+| *(superseded) stratum tests, for reference:* H3 c0 | 327 / 393 | 5.6 / 2.8 | 8% / 45% | 24% / 71% |
+| *(superseded)* H3 c1 | 215 / 299 | 8.4 / 4.6 | 4% / 13% | 13% / 32% |
+| *(superseded)* H3 c2+ | 682 / 720 | 3.5 / 1.7 | 26% / 92% | 51% / 98% |
+| *(superseded)* H3 intersection of the three strata | | | 0.1% / 5% | 2% / 22% |
 | H4a, c2+ (non-inferior within 1 point, true 0) | 682 / 720 | 2.5 / 1.2 | 11% / 59% | 29% / 82% |
 | H4b, primary swap population (two-sided) | 505 / 551 | 6.4 / 3.2 | n/a | n/a |
 
@@ -236,9 +237,9 @@ Findings (dev design numbers, K = 8, level 5; 22% of problems have a c1 set in 4
   at least 98% even for SD 0.20. More draws lower H1's SD toward its binomial-noise value.
 - H2, H3 (c0, c1) and H4a are badly underpowered with 4 draws; 16 draws repair H2 and H3
   (c2+) and bring H4a to 59% at the worst case (82% unadjusted).
-- **H3 as specified is not testable**: the intersection over three strata has 5% power
-  even with 16 draws, because c1 sets are rare. This is a property of the design, not of
-  the placebo's effect (O2).
+- **H3 as an intersection over three strata was not testable** (5% power even with 16
+  draws, because c1 sets are rare: a property of the design, not of the placebo's
+  effect). R11 therefore adopts one pooled test (99% at 16 draws, 44% at 4).
 - With 4 draws H4a's margin of 1 point would need about 4,200 problems for 80% power at
   the worst case; with 16 draws its SD falls to 0.094 and the 720 available problems
   reach 59%.
@@ -326,6 +327,15 @@ weeks 7–8 (to about 2027-01-06); with 5 seeds training is weeks 3–6, evaluat
 Stage 4 weeks 8–9 (to about 2027-01-13). The factorial's cut date, 2027-01-17, is binding
 either way and the factorial is cut first.
 
+**Compute available (owner, 2026-11-14).** One RTX PRO 6000 (Blackwell) in short sessions
+of about 10 hours, not long continuous access. Consequences: every job is sharded,
+resumable and uploaded when it finishes a shard; the order is the main runs first (G2, the
+pools of the sets the main hypotheses need, then the reader and solver-GRPO runs and their
+evaluation), and the extras (joint arm, 0.6B reader, no-c0 run, secondary, robustness and
+post-release sets, K sweep beyond K = 8 and 4, factorial) are decided after the main
+runs, not scheduled now. The weeks of the timeline above assume continuous access and
+will stretch accordingly; the cut date of the factorial still binds.
+
 ## 9. Not yet decided
 
 **Frozen at Stage 2:** reader prompt wording (drafts in `prompts/reader_v0/`; the owner
@@ -339,11 +349,12 @@ Qwen2.5-Math-1.5B (plain prompt with a format gate).
 shows four things I did not change, because each would alter a design parameter, a margin
 or a hypothesis. No hypothesis, margin or planning effect has been changed.
 
-- **O1. Evaluation draws.** Recommended: 16 draws per problem on the primary set (4
+- **O1 and O2 were accepted by the owner on 2026-11-14 (R11); O3 and O4 stay as stated.**
+- **O1. Evaluation draws (accepted).** Recommended: 16 draws per problem on the primary set (4
   elsewhere). It repairs H2 (62% to 99.6% power at the worst case), H3 on c2+ and H4a (11%
   to 59%), and cuts H1's noise. Estimated cost: about 35 to 50 GPU-hours of the evaluation
   budget (unmeasured). D15 carries this as the provisional value of the sizing rule.
-- **O2. H3.** The intersection of three non-inferiority tests (2 points each) has 5% joint
+- **O2. H3 (accepted: option a).** The intersection of three non-inferiority tests (2 points each) has 5% joint
   power at 16 draws because c1 sets are rare. Options: (a) one pooled non-inferiority test
   over all sets, strata reported as estimates (99% power at 16 draws; recommended); (b)
   test c0 and c2+ only, c1 as an estimate (about 41% joint at the worst case); (c) keep as
@@ -390,7 +401,7 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
   - **R3, H3 wording (section 4).** *Was:* "within 2 points of" the candidate-free accuracy,
     with a one-sided lower-bound condition. *Now:* a non-inferiority hypothesis (not more
     than 2 points worse), tested one-sided at margin 0.02, as an intersection test over the
-    strata. *Why:* "within" suggests a two-sided equivalence test, which is not what is
+    strata (replaced by one pooled test in R11). *Why:* "within" suggests a two-sided equivalence test, which is not what is
     tested. The statistical condition and the margin are unchanged.
   - **R4, answer swap (D6, D25, H4b).** *Was:* every c2+ set with at least one wrong
     candidate, swap target "the plurality wrong answer" without a tie rule. *Now:* the primary
@@ -431,6 +442,13 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R11, owner's answer to the review (2026-11-14).** The owner accepted O1 (draws
+    provisionally 16 on the primary set, fixed at the freeze by the power rule) and O2
+    (H3 becomes one pooled non-inferiority test over all sets, strata as estimates; this
+    changes H3's test form, not its margin or direction). *Constraint added:* GPU access is
+    short sessions of about 10 hours (section 8.1), so the main runs come first and the
+    extras are decided after them. The D24 clause "H3 is an intersection test" no longer
+    applies.
   - **R10, open items for the owner (section 9).** Four findings of the power
     recalculation that would need a change of a margin, a hypothesis or the design are
     listed with a recommendation and **not applied**: O1 draws, O2 the form of H3, O3 the
