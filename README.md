@@ -47,6 +47,18 @@ Extras: `[data]` (datasets, huggingface_hub), `[vllm]`, `[hf]`, `[figures]`. Raw
 pools and checkpoints go to private Hugging Face repositories, never to Git. No token is ever
 written to a file: use the `HF_TOKEN` environment variable.
 
+## Stage 1 harness check (gate G2) on a GPU
+
+`scripts/10_g2_harness.py` generates candidates with Qwen3-4B-Instruct-2507 on AIME 2025
+and HMMT Feb 2025, runs the untrained reader and its controls on K = 4 candidate sets and
+judges the four signs of 2608.18379 (PREREG section 8). It is resumable and touches no
+sealed set. On a hosted GPU, open `notebooks/stage1_molab.py` in molab, attach the GPU,
+press **1** (clones both repositories, builds the pinned vLLM 0.33.0 environment) and
+**2** (starts the job in the background), then **3** to upload the run to the private
+dataset `Arshia-HZ/trained-reader-audit-raw`. A Hugging Face token is needed only for the
+upload (typed into the password box or set as `HF_TOKEN`; never written anywhere).
+A rehearsal without a GPU: `python scripts/10_g2_harness.py --out runs/g2_mock --mock`.
+
 ## Layout
 
 ```text

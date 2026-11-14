@@ -9,18 +9,20 @@ only does what is missing.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from channel_audit.backends.base import Backend
 from channel_audit.runner import (
     RunConfig,
+    backend_for_run,
     create_run,
     grade_pending,
     run_round0,
     run_sc_pool,
 )
 from channel_audit.schema import Problem
+from channel_audit.shards import LazyBackend
 
 from reader_audit import reader_eval as ev
 from reader_audit.controls import Truncate
@@ -38,19 +40,28 @@ def run_g2(
     cfg: RunConfig,
     *,
     backend: Backend | None = None,
+    backend_factory: Callable[[], Backend] | None = None,
     clipper: Truncate | None = None,
     samples: int = 16,
     k: int = 4,
     n_draws: int = 8,
     cap: int | None = 4096,
 ) -> dict:
-    """Run (or resume) the harness check and write ``g2_report.json`` and ``.md``."""
+    """Run (or resume) the harness check and write ``g2_report.json`` and ``.md``.
+
+    The pool run and the reader run share one backend. Unless ``backend`` is given it
+    is built, once, on first use (from the config, or by ``backend_factory``), so a
+    finished job that is started again never loads the model.
+    """
     if samples <= ROUND0_AGENTS or samples < k:
         raise ValueError(f"need more than {max(ROUND0_AGENTS, k)} samples per problem")
     out = Path(out_dir)
     pool_cfg = cfg.model_copy(
         update={"replicates": 1, "n_pool": samples - ROUND0_AGENTS}
     )
+    if backend is None:
+        factory = backend_factory or (lambda: backend_for_run(cfg, problems))
+        backend = LazyBackend(factory)
     pool_ctx = create_run(out / "pool", pool_cfg, problems, backend)
     run_round0(pool_ctx)
     run_sc_pool(pool_ctx)
@@ -67,7 +78,7 @@ def run_g2(
         cap=cap,
         truncate=clipper,
     )
-    reader_ctx = open_reader_run(out / "reader", cfg, problems, pool_ctx.backend)
+    reader_ctx = open_reader_run(out / "reader", cfg, problems, backend)
     run_reader(reader_ctx, plan)
 
     outcomes = ev.load_outcomes(out / "reader") + ev.vote_outcomes(pools, (k,), n_draws)

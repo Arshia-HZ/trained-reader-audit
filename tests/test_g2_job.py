@@ -70,3 +70,42 @@ def test_too_few_samples_are_refused(tmp_path):
     cfg = RunConfig(model_id="mock/g2", max_tokens=512, context_limit=100_000)
     with pytest.raises(ValueError, match="more than"):
         run_g2(tmp_path, fake_problems(4), cfg, samples=3, k=4)
+
+
+def test_a_finished_job_never_builds_a_backend(job):
+    def boom():
+        raise AssertionError("the backend must not be built for a finished job")
+
+    again = run_g2(
+        job["out"],
+        job["problems"],
+        job["cfg"],
+        backend_factory=boom,
+        samples=16,
+        k=4,
+        n_draws=3,
+        cap=None,
+    )
+    assert again == job["report"]
+
+
+def test_an_unfinished_job_builds_one_backend_for_both_runs(tmp_path):
+    problems = fake_problems(10)
+    cfg = RunConfig(model_id="mock/g2", max_tokens=512, context_limit=100_000)
+    built = []
+
+    def factory():
+        built.append(1)
+        return MockBackend(MockWorld.from_problems(problems, base_p=0.5), EFFECTS)
+
+    run_g2(
+        tmp_path,
+        problems,
+        cfg,
+        backend_factory=factory,
+        samples=16,
+        k=4,
+        n_draws=2,
+        cap=None,
+    )
+    assert built == [1]

@@ -99,7 +99,9 @@ def middle_clipper(
     A solution ends with its conclusion and its boxed answer, so cutting the end would
     hide the answer a reader is meant to weigh. A text of at most ``cap`` tokens is
     returned unchanged; a longer one keeps ``cap - tail`` tokens from its start and
-    ``tail`` from its end, with a marker between them.
+    ``tail`` from its end, with a marker between them (about ten more tokens, so the
+    result has ``cap`` plus the marker; checked with the Qwen3 tokenizer: 1,545 for a
+    cap of 1,536).
     """
 
     def clip(text: str, cap: int) -> str:
