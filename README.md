@@ -29,7 +29,7 @@ check, pools, baselines) is in progress. No sealed test set has been scored.
 | R2 | Dev baselines (stored-confidence vote, early-stopping SC), prompt lengths | done |
 | R3 | Reader harness: candidate sets, strata, prompts, controls, answer swap, planner, G2 job | done |
 | R3b | Rules of the PREREG review: swap populations, test-set SC, inference and Holm power, seed-conditional schedule, probe protocol | done |
-| R4 | GPU jobs of Stage 1 (G2 harness check, pools, contamination probe, untrained readers) | G2 job ready (`notebooks/stage1_molab.py`); needs a molab session |
+| R4 | GPU jobs of Stage 1 (G2 harness check, pools, untrained readers; the contamination probe only after the freeze) | G2 job ready (`notebooks/stage1_molab.py`); needs a molab session |
 | R5 | Stage 2: train pools, GRPO pilot, freeze | |
 | R6 | Stage 3: training runs, evaluation, frozen analysis | |
 
