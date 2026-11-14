@@ -1,0 +1,8 @@
+Problem:
+<<question>>
+
+Here are the final answers that <<k>> solvers gave to this problem. Any of them may be wrong, and several may agree on a wrong answer.
+<<answers>>
+
+Work out the correct answer yourself, step by step, using the listed answers only as hints.
+Put your final answer in \boxed{}.

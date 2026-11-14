@@ -1,0 +1,8 @@
+Problem:
+<<question>>
+
+Here are <<k>> candidate solutions to this problem, written by different solvers. Any of them may contain mistakes, and several may agree on a wrong answer.
+<<candidates>>
+
+Work out the correct answer yourself, step by step, using the candidate solutions only as hints.
+Put your final answer in \boxed{}.

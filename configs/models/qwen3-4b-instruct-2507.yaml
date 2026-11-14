@@ -1,0 +1,12 @@
+# Harness check (gate G2): the model of 2608.18379. Its answers on AIME and HMMT are long,
+# so the limits are larger than for the 1.7B models; candidates are cut at 4,096 tokens
+# in reader prompts (K = 4: about 17k tokens), so the window is 32,768.
+model_id: Qwen/Qwen3-4B-Instruct-2507
+backend: vllm
+dtype: float16
+revision: cdbee75f17c01a7cc42f958dc650907174af0554
+max_tokens: 8192
+max_model_len: 32768
+chat_template_kwargs:
+  enable_thinking: false   # this model has no thinking mode; the audit's validator wants it set
+stop_token_ids: [151645, 151643]

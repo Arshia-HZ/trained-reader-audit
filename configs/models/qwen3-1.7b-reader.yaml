@@ -1,0 +1,12 @@
+# Qwen3-1.7B as a reader (untrained here; trained checkpoints get their own entries).
+# A K = 8 prompt with candidates cut at 1,536 tokens reaches about 13.1k tokens on dev
+# (docs/dev_baselines.md), so the window is 16,384 (PREREG D14).
+model_id: Qwen/Qwen3-1.7B
+backend: vllm
+dtype: float16
+revision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
+max_tokens: 2048
+max_model_len: 16384
+chat_template_kwargs:
+  enable_thinking: false
+stop_token_ids: [151645, 151643]

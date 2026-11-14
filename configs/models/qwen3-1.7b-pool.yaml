@@ -1,0 +1,11 @@
+# Candidate pools of Qwen3-1.7B: identical to the audit's config (tests check it), so
+# new pools are generated exactly as the 600 dev pools were.
+model_id: Qwen/Qwen3-1.7B
+backend: vllm
+dtype: float16
+revision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
+max_tokens: 2048
+max_model_len: 12288
+chat_template_kwargs:
+  enable_thinking: false
+stop_token_ids: [151645, 151643]   # <|im_end|>, <|endoftext|>

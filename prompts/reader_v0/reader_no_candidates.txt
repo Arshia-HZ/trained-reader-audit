@@ -1,0 +1,5 @@
+Problem:
+<<question>>
+
+Work out the correct answer yourself, step by step.
+Put your final answer in \boxed{}.
