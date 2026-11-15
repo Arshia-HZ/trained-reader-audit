@@ -359,7 +359,8 @@ will stretch accordingly; the cut date of the factorial still binds.
 ## 9. Not yet decided
 
 **Frozen at Stage 2:** reader prompt wording (drafts in `prompts/reader_v0/`; the owner
-reads real samples first); GRPO hyperparameters and framework; the training decontamination
+reads real samples first); GRPO hyperparameters and framework (starting values recorded in
+R15, to be confirmed by the pilot); the training decontamination
 rule; the train-set mix (AggLM's easy-set share to be checked); ESC settings; the exact
 factorial contrasts; the seed count (D7) and the number of draws (section 6.3), both from
 measurements; the SDs of section 6.3; the transfer-pass prompts for Llama-3.2-3B and
@@ -471,6 +472,37 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R15, the GRPO set-up (2026-11-15), [delegated]; recorded before any training
+    run.** *Framework:* TRL 1.18.0 `GRPOTrainer` with colocated vLLM 0.33.0 (its metadata
+    allows the evaluation version), in a separate training environment (the evaluation
+    environment is not touched); bf16 training. *Starting values* (the roadmap's, with the
+    two choices it left open): full fine-tune, AdamW, learning rate 1e-6 after 10 warm-up
+    steps, 64 prompts × 8 samples per step, sampling temperature 1.0, completion cap
+    2,048 (the evaluation's `max_tokens`), clip 0.2 / 0.28, token-level normalisation
+    (`dapo`), advantages scaled within the group, **KL weight 0** (no reference model; the
+    roadmap allowed 0 or 0.001), 300 steps, checkpoint every 25. One optimizer step uses
+    exactly one generation batch (no reuse), so checkpoints never fall inside TRL's
+    generation cycle. Prompts are rendered with the non-thinking template, as in
+    evaluation. Completions that hit the cap are **not** masked: the reward is the audit's
+    grade, which accepts a complete box in a cut completion, so training and evaluation
+    score the same thing. *Rows:* reader prompts are candidate sets with K in {2, 4, 8}
+    (4 draws per problem and K, order shuffled, no candidate marked as the reader's own),
+    every c0 and c1 set and a seeded half of the c2+ sets; the no-c0 arm drops the c0
+    sets; solver-GRPO uses the plain round-0 prompt. The reader and solver runs differ only
+    in prompt, and are matched on cumulative rollout tokens, which the run logs per step and
+    rebuilds from the trainer's saved log after a resume. *Checkpoint rule:* the best of
+    steps 100, 200 and 300 on dev, as in the roadmap. *Measured before the pilot:* on the
+    400 pilot pools the reader rows number 3,509 (c0 1,554; c1 580; c2+ 1,375), prompts
+    average 4,585 tokens (K = 2: 2,130; K = 4: 4,089; K = 8: 7,941) and the longest is
+    12,676, so with the 2,048 cap everything fits the 16,384 window; the pilot pools have
+    14–17% of samples at the generation cap. A CPU run with a tiny random model, the real
+    rows, reward and callbacks, killed after its first checkpoint and resumed, gave the same
+    prompts per step, the same rollout-token totals, the same gradient norms and the same
+    final weights as the uninterrupted run (`scripts/21_grpo_resume_check.py`). *Not yet
+    checked:* the colocated vLLM path, GPU memory and speed (the 20-step pilot is the first
+    test); the cost is an estimate only, about 3 to 5 minutes a step, which would put 300
+    steps above the 20-hour line of D7 and is why the pilot measures it. Changing any of
+    these after the pilot needs its own dated entry.
   - **R14, the training set and its decontamination rule (2026-11-15), [delegated].**
     *Rule:* the training problems are all MATH train problems of levels 3 to 5 plus a
     seeded subset of 2,600 DeepScaleR-Preview problems; a problem is removed if its
