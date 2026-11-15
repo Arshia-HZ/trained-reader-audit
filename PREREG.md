@@ -480,8 +480,9 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     `OE_TO_maths_en_COMP`, text only); exact duplicates inside the training set are also
     removed. Short problems match by identity only. *Result* (`data/train/manifest.json`,
     `scripts/14_build_train.py`): 7,587 problems (4,987 MATH, 2,600 DeepScaleR; levels
-    1,460 / 1,514 / 2,013 for MATH), 600 removed for overlap with a study set (590 by
-    n-gram) and 423 duplicates. The n-gram rule removes 584 of the 5,582 usable MATH train
+    1,460 / 1,514 / 2,013 for MATH), 680 candidates removed for overlap with a study set (671 by
+    n-gram, 9 identical; 644 from the dev, primary, reserve, screen and pilot sets, 29 from
+    the harness set and 7 from the secondary set) and 423 duplicates. The n-gram rule removes 584 of the 5,582 usable MATH train
     problems (10%); this is conservative and is kept. *Not done:* AggLM's easy-set share
     (a ratio inside the candidate sets, not in this list) is still to be checked before the
     freeze; the DeepScaleR share (34%) is my choice, to be revisited at the freeze with
