@@ -87,4 +87,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    code = main()
+    # vLLM's engine can keep the process (and the GPU) alive after the job is done
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(code)
