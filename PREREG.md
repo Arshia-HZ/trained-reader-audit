@@ -41,7 +41,7 @@ rather than from re-solving, voting or training alone?
 | Set | Source | Size | Use | Status on 2026-11-14 |
 | --- | --- | --- | --- | --- |
 | Dev | The audit's 600 confirmatory problems (199 / 193 / 208 at levels 3 / 4 / 5), 18 existing samples each (2 replicates × (3 round-0 + 6 pool), all with the audit's round-0 prompt) | 600 | Stage 0 and 1 analyses, prompt development, paired SD, checkpoint rule. Never a test set. | Read. Stage 0, the dev baselines and the design numbers of section 7 were computed on it. |
-| Harness | AIME 2025 + HMMT Feb 2025 (MathArena) | 60 | Gate G2 with Qwen3-4B-Instruct-2507; reported, not powered | Pinned (`data/sets/harness.json`); G2 not yet run |
+| Harness | AIME 2025 + HMMT Feb 2025 (MathArena) | 60 | Gate G2 with Qwen3-4B-Instruct-2507; reported, not powered | Pinned (`data/sets/harness.json`); G2 run on 2026-11-14, treated as passed by the owner on 2026-11-15 (R12) |
 | Primary | MATH test level 5 minus every screen, pilot and dev problem | **972** (1,324 − 82 − 62 − 208) | H1 to H4 | **Sealed** |
 | Secondary | OlympiadBench `OE_TO_maths_en_COMP` | 674 | Replication of H1; not in the Holm families | **Sealed** |
 | Robustness | MATH-P-Hard | 279 | Perturbed level-5 problems | **Sealed** |
@@ -294,7 +294,7 @@ budget table) are reproduced by the scripts above.
 | Stage | Work | Gate | Pass |
 | --- | --- | --- | --- |
 | 0 | Break-even on dev | G1 | Done, passes at K = 8 (D2) |
-| 1 | Harness check; pools for every set (run quality only on sealed sets); untrained readers and baselines on dev and harness sets, including the dev SDs of section 6.3; log-probability features; rehearsal of the contamination protocol on dev and the harness set only | **G2** | On AIME 2025 + HMMT 2025 with Qwen3-4B-Instruct-2507, K = 4, the four point-estimate signs of 2608.18379 are reproduced: aggregation − candidate-free below 0 at c0 and above 0 at c2+; placebo − candidate-free below 0 at c0; plurality vote above aggregation at c2+. The c2+ aggregation − candidate-free CI must also exclude 0. c1 is not judged (unresolved in the paper). Otherwise fix the prompt, extraction or truncation; no training until it passes. |
+| 1 | Harness check; pools for every set (run quality only on sealed sets); untrained readers and baselines on dev and harness sets, including the dev SDs of section 6.3; log-probability features; rehearsal of the contamination protocol on dev and the harness set only | **G2** | On AIME 2025 + HMMT 2025 with Qwen3-4B-Instruct-2507, K = 4, the four point-estimate signs of 2608.18379 are reproduced: aggregation − candidate-free below 0 at c0 and above 0 at c2+; placebo − candidate-free below 0 at c0; plurality vote above aggregation at c2+. The c2+ aggregation − candidate-free CI must also exclude 0. c1 is not judged (unresolved in the paper). Otherwise fix the prompt, extraction or truncation; no training until it passes. **Outcome (R12): the first three signs held; the fourth (vote above aggregation at c2+) did not, because the vote is at ceiling there (99.2% against 99.5%); the owner treated G2 as passed on 2026-11-15, with the rule above left unchanged.** |
 | 2 | Train pools; 20-step throughput pilot, 50-step GRPO pilot; GPU-seconds; seed rule (D7); draws by the sizing rule of section 6.3; **freeze** (including the probe protocol, D13) | **G3** | Stable pilot, throughput fits the budget; this file, the prompts, the analysis code and the set manifests committed and hashed |
 | 3 | Reader × n_s, solver-GRPO × n_s (step 300 kept), joint × 1, no-c0 × 1, 0.6B × 1, with **n_s = 3 or 5 by D7**; then the contamination probe (D13) and the evaluation of every arm on every set; analysis run once | **G4** | The framing rule of section 4.1: H1a and H1b supported → full C1; H1a only → narrower C1, with the solver-GRPO caveat; H1a not supported → lead with C2. |
 | 4 | Factorial, transfer pass, write-up | cut date D18 | |
@@ -442,6 +442,36 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R12, G2 result and the owner's decision (run 2026-11-14, decided 2026-11-15).**
+    *What happened:* the G2 job ran once on a rented RTX PRO 6000 (Qwen3-4B-Instruct-2507,
+    bf16, 60 problems, 16 samples each, K = 4, 8 sets per problem, candidates cut at 4,096
+    tokens; 3 h 50 min in all). Result: c0 reader − candidate-free −4.1 points
+    [−11.1, +0.5] ok; c0 placebo − candidate-free −7.1 [−15.5, −1.1] ok; c2+ reader −
+    candidate-free +27.1 [+15.6, +40.0] ok; **c2+ vote − reader −0.9 [−3.1, +0.9] fails the
+    rule as written**. Reported only: c1 reader − candidate-free +25.0 [−10.0, +56.7] (15
+    problems); c2+ answer-only − reader −18.4; c2+ placebo − candidate-free −40.8. The
+    saved-data diagnostic (no GPU) found a ceiling: on the 192 c2+ sets the vote is right
+    99.2% of the time and the reader 99.5%; they agree on 188 sets; the gap is 3 sets where
+    the vote tied 2–2 (half credit) and the reader chose the right answer, against 1 set
+    where the vote was right and the reader wrong. On the 73 c2+ sets with only 2 or 3
+    correct candidates the reader scores 0.99 and the vote 0.98. Extraction is not the
+    cause (the reader's boxed answer was found in 480 of 480 outputs, one generation hit
+    the length limit); 37.4% of the candidate samples hit the 8,192-token generation limit
+    (all 359 wrong) and 304 of 480 reader prompts had all four candidates clipped at the
+    4,096 cap without hurting c2+ accuracy. *Decision (owner, 2026-11-15, on my
+    recommendation):* treat G2 as passed on the three informative signs, because the
+    fourth cannot be told apart from zero when the vote has no headroom. *What did not
+    change:* the G2 rule above is not edited; this entry records that it was waived for
+    this run and why, so the gate must not be read as having reproduced the paper's fourth
+    sign. *Consequences:* (i) the untrained 4B reader is at least as good as the vote at
+    K = 4 on c2+, so the main study should expect a trained 1.7B reader's value to come
+    from c1 and c2 sets, not from beating a weak untrained reader; (ii) the 8,192-token
+    cap loses candidates on hard problems, to be checked on the Qwen3-1.7B pools before the
+    freeze (not changed here); (iii) the reader stage costs about 2.7 h for 1,920
+    generations at prompts of about 16,500 tokens, which sizes the untrained-reader dev
+    runs under the 10-hour session limit. Raw data: private dataset
+    `Arshia-HZ/trained-reader-audit-raw`, `g2/g2_qwen3-4b-instruct-2507/`; the diagnostic
+    is `scripts/11_g2_diagnostic.py`.
   - **R11, owner's answer to the review (2026-11-14).** The owner accepted O1 (draws
     provisionally 16 on the primary set, fixed at the freeze by the power rule) and O2
     (H3 becomes one pooled non-inferiority test over all sets, strata as estimates; this
