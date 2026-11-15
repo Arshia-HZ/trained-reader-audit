@@ -288,6 +288,26 @@ budget table) are reproduced by the scripts above.
   the broad one. 13.6% of candidates are cut for display, of which 5.8 points finished
   within the generation limit; 7.8% hit the generation limit. They feed D14, D25 and
   section 6.3.
+- **Untrained reader on dev (2026-11-15), `docs/dev_reader.json`, `scripts/12_dev_reader.py`
+  and `13_dev_reader_analysis.py`.** Qwen3-1.7B, untrained, draft prompt, non-thinking,
+  temperature 0.7, K = 8, candidates cut at 1,536 tokens, the 208 level-5 dev problems, 16
+  seeded sets per problem, 2 replicates per set, arms `reader_full` and `candidate_free`
+  (13,312 generations, 8 shards of 26 problems, 1.2 GPU-hours on the RTX PRO 6000; raw
+  data in `Arshia-HZ/trained-reader-audit-raw`, `dev_reader_qwen3-1.7b/`). Descriptive and
+  dev only; the SDs are those of the *untrained* reader and a trained reader's will differ.
+  (1) The reader writes 728 tokens per read (a pool sample: about 820), so its matched
+  self-consistency count is k\* = 8.75 under the generated-only rule, not 9. (2) Untrained
+  reader minus self-consistency at the matched k\*: −3.2 points (SD 0.152 over problems,
+  16 draws). (3) c2+ sets: untrained reader minus the plain vote −7.4 points (SD 0.172,
+  154 problems, 74% of problems have a c2+ set); the 4B reader of G2 was level with the
+  vote, so the 1.7B reader is a weaker reader. (4) c1 sets: the reader with candidates
+  minus its candidate-free solve +14.5 points (SD 0.370; 64 of 208 problems, 31%, have a
+  c1 set at 16 draws, 22% at 4 draws). (5) The sizing rule of section 6.3 with these
+  numbers (draws from {4, 8, 16}; H1b borrows H1a's SD; the difference-in-differences of
+  H2 is taken to have √2 times the single-arm SD, both stated assumptions): no number of
+  draws reaches 70% power at the Holm worst case for H1a and H1b (67% at 16 draws), H4a
+  (14%); H2 reaches 75% at 16 draws. The rule's fallback applies: **16 draws, with H1a, H1b
+  and H4a listed as underpowered for the owner's decision at the freeze** (O3, O4).
 
 ## 8. Stages and gates
 
@@ -361,10 +381,16 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
   is and accept that H3 cannot be supported.
 - **O3. H4a margin.** At 4 draws a margin of 1 point has 11% power at the worst case; a
   margin of 2.5 points would give 81%. At 16 draws the 1-point margin reaches 59%. If O1
-  is accepted I would keep 1 point.
+  is accepted I would keep 1 point. **Update 2026-11-15 (R13), with the SD measured on dev
+  (0.172 at 16 draws, 720 problems):** the 1-point margin has 14% power at the Holm worst
+  case; margins of 2, 2.5 and 3 points give 69%, 90% and 98%. A margin of about 2 points
+  would reach the 70% target. Still open; the margin is not changed.
 - **O4. H1 planning effect.** The planning effect of 1.5 points is at 48% power under Holm
   with SD 0.18; the effects Stage 0 makes plausible give at least 98%. No change proposed;
-  stated so that the planning effect is not mistaken for the expected one.
+  stated so that the planning effect is not mistaken for the expected one. **Update
+  2026-11-15 (R13), SD measured 0.152 at 16 draws:** 1.5 points has 67% power at the worst
+  case; 1.54 points would give 70%, 2 points 93%. Still open; the planning effect is not
+  changed.
 
 ## 10. Change log
 
@@ -442,6 +468,14 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R13, untrained reader on dev (2026-11-15).** The job of section 7 ran once, as
+    designed in R11: 16 draws, 2 replicates, K = 8, level-5 dev. *Nothing preregistered
+    changed:* D15's provisional 16 draws stands (it is also the rule's fallback), and O3
+    and O4 stay open with measured numbers (section 9). The SD of H1b and the
+    difference-in-differences of H2 are proxies (stated in section 7), to be replaced by
+    the pilot's. The 1.7B pool's generation limit is 2,048 tokens and 14.2% of its level-5
+    candidates hit it (R12's item (ii) is thereby bounded for dev: the cap is to be checked
+    on the test pools, not here).
   - **R12, G2 result and the owner's decision (run 2026-11-14, decided 2026-11-15).**
     *What happened:* the G2 job ran once on a rented RTX PRO 6000 (Qwen3-4B-Instruct-2507,
     bf16, 60 problems, 16 samples each, K = 4, 8 sets per problem, candidates cut at 4,096

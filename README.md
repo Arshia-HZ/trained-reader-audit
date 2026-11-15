@@ -29,7 +29,7 @@ check done; pools, baselines, untrained readers next) is in progress. No sealed 
 | R2 | Dev baselines (stored-confidence vote, early-stopping SC), prompt lengths | done |
 | R3 | Reader harness: candidate sets, strata, prompts, controls, answer swap, planner, G2 job | done |
 | R3b | Rules of the PREREG review: swap populations, test-set SC, inference and Holm power, seed-conditional schedule, probe protocol | done |
-| R4 | GPU jobs of Stage 1 (G2 harness check, pools, untrained readers; the contamination probe only after the freeze) | G2 done 2026-11-14 (three of four signs held; the fourth is at a ceiling and was waived by the owner on 2026-11-15, PREREG R12); pools, untrained readers and the dev SDs are next |
+| R4 | GPU jobs of Stage 1 (G2 harness check, pools, untrained readers; the contamination probe only after the freeze) | G2 done 2026-11-14 (three of four signs held; the fourth is at a ceiling and was waived by the owner on 2026-11-15, PREREG R12); untrained 1.7B reader on dev done 2026-11-15 (PREREG R13); train pools, GRPO code and the pilot are next |
 | R5 | Stage 2: train pools, GRPO pilot, freeze | |
 | R6 | Stage 3: training runs, evaluation, frozen analysis | |
 
