@@ -46,7 +46,7 @@ rather than from re-solving, voting or training alone?
 | Secondary | OlympiadBench `OE_TO_maths_en_COMP` | 674 | Replication of H1; not in the Holm families | **Sealed** |
 | Robustness | MATH-P-Hard | 279 | Perturbed level-5 problems | **Sealed** |
 | Post-release | HMMT Nov 2025, AIME 2026, HMMT Feb 2026 | 93 | Contamination check; Bayesian intervals; not powered | **Sealed** |
-| Train | MATH train levels 3–5 plus a DeepScaleR subset, decontaminated against every set above | about 8k | Candidate pools and GRPO | Not built |
+| Train | MATH train levels 3–5 plus a DeepScaleR subset, decontaminated against every set above | 7,587 (R14) | Candidate pools and GRPO | Built 2026-11-15 (`data/train/`, **[delegated]**) |
 
 - "Sealed" means: pools may be generated, and only run quality (overflow, truncation, unboxed
   rate) may be read, until the Stage 2 freeze. No accuracy of any kind, **and no model-based
@@ -471,6 +471,21 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R14, the training set and its decontamination rule (2026-11-15), [delegated].**
+    *Rule:* the training problems are all MATH train problems of levels 3 to 5 plus a
+    seeded subset of 2,600 DeepScaleR-Preview problems; a problem is removed if its
+    normalised text (lower-case alphanumeric words) is identical to a study problem's or
+    shares a run of 13 consecutive such words with one, against dev, primary, reserve, the
+    audit's screen and pilot sets, the harness set and the secondary set (OlympiadBench
+    `OE_TO_maths_en_COMP`, text only); exact duplicates inside the training set are also
+    removed. Short problems match by identity only. *Result* (`data/train/manifest.json`,
+    `scripts/14_build_train.py`): 7,587 problems (4,987 MATH, 2,600 DeepScaleR; levels
+    1,460 / 1,514 / 2,013 for MATH), 600 removed for overlap with a study set (590 by
+    n-gram) and 423 duplicates. The n-gram rule removes 584 of the 5,582 usable MATH train
+    problems (10%); this is conservative and is kept. *Not done:* AggLM's easy-set share
+    (a ratio inside the candidate sets, not in this list) is still to be checked before the
+    freeze; the DeepScaleR share (34%) is my choice, to be revisited at the freeze with
+    the pilot. The list is frozen at the Stage 2 freeze with the rest of section 9.
   - **R13, untrained reader on dev (2026-11-15).** The job of section 7 ran once, as
     designed in R11: 16 draws, 2 replicates, K = 8, level-5 dev. *Nothing preregistered
     changed:* D15's provisional 16 draws stands (it is also the rule's fallback), and O3
