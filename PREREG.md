@@ -475,7 +475,7 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
   - **R15, the GRPO set-up (2026-11-15), [delegated]; recorded before any training
     run.** *Framework:* TRL 1.18.0 `GRPOTrainer` with colocated vLLM 0.33.0 (its metadata
     allows the evaluation version), in a separate training environment (the evaluation
-    environment is not touched); bf16 training. *Starting values* (the roadmap's, with the
+    environment is not touched); mixed-precision training (fp32 master weights under bf16 autocast, because a step of 1e-6 on weights stored in bf16 is rounded away). *Starting values* (the roadmap's, with the
     two choices it left open): full fine-tune, AdamW, learning rate 1e-6 after 10 warm-up
     steps, 64 prompts × 8 samples per step, sampling temperature 1.0, completion cap
     2,048 (the evaluation's `max_tokens`), clip 0.2 / 0.28, token-level normalisation

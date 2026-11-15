@@ -39,9 +39,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--warmup-steps", type=int, default=10)
     ap.add_argument("--vllm-memory", type=float, default=0.3)
     ap.add_argument("--no-vllm", action="store_true")
+    ap.add_argument(
+        "--policy-dtype", default="float32", choices=["float32", "bfloat16"]
+    )
     ap.add_argument("--upload-repo")
     ap.add_argument("--milestones", type=int, nargs="*", default=[100, 200, 300])
     args = ap.parse_args(argv)
+
+    import torch
 
     from reader_audit.grpo_run import train
     from reader_audit.grpo_upload import CheckpointUploader
@@ -76,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         model_id=model.model_id,
         revision=model.revision,
         uploader=uploader,
+        policy_dtype=getattr(torch, args.policy_dtype),
         learning_rate=args.lr,
         warmup_steps=args.warmup_steps,
         use_vllm=not args.no_vllm,

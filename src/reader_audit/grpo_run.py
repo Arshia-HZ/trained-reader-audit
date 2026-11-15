@@ -173,6 +173,7 @@ def train(
     uploader: CheckpointUploader | None = None,
     resume: bool = True,
     reward=correctness_reward,
+    policy_dtype=torch.float32,
     **config_overrides,
 ):
     out = Path(out_dir)
@@ -187,7 +188,8 @@ def train(
         f"mean {sum(lengths) / len(lengths):.0f}",
         flush=True,
     )
-    init_kwargs = {"dtype": torch.bfloat16}
+    # fp32 master weights under bf16 autocast: a 1e-6 step on bf16 weights is rounded away
+    init_kwargs = {"dtype": policy_dtype}
     if revision:
         init_kwargs["revision"] = revision
     config_overrides.setdefault("model_init_kwargs", init_kwargs)
