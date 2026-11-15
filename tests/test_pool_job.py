@@ -9,6 +9,7 @@ from channel_audit.backends.mock import MockBackend, MockWorld, fake_problems
 from channel_audit.runner import RunConfig
 
 from reader_audit.pool_job import DONE, run_pool_shards, shard_name
+from reader_audit.pools import load_pools
 from reader_audit.train_set import train_order
 
 
@@ -39,6 +40,8 @@ def test_every_problem_gets_sixteen_samples_in_shards_of_ten(world):
         s["generations"] == s["problems"] * 16 for s in report["shards"].values()
     )
     assert (world["out"] / shard_name(2) / DONE).is_file()
+    pools = load_pools(world["out"])  # the audit's marker and hash check pass
+    assert len(pools) == 25 and {p.n for p in pools.values()} == {16}
 
 
 def test_max_shards_then_resume_gives_the_same_report_and_no_duplicates(world):

@@ -9,6 +9,7 @@ it was in.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from collections.abc import Callable, Sequence
@@ -24,7 +25,7 @@ from channel_audit.runner import (
     run_sc_pool,
 )
 from channel_audit.schema import Problem
-from channel_audit.shards import LazyBackend
+from channel_audit.shards import DONE_FILE, LazyBackend
 
 from reader_audit.pools import read_pools
 
@@ -34,6 +35,19 @@ DONE = "DONE.json"
 
 def shard_name(index: int) -> str:
     return f"shard_{index:03d}"
+
+
+def write_shard_done(shard: Path) -> None:
+    """The audit's marker (a hash of the generations), which ``load_pools`` checks."""
+    gens = shard / "generations.jsonl"
+    done = {
+        "shard": shard.name,
+        "n_problems": len(read_pools(shard)),
+        "n_generations": sum(1 for line in gens.open(encoding="utf-8") if line.strip()),
+        "generations_sha256": hashlib.sha256(gens.read_bytes()).hexdigest(),
+    }
+    text = json.dumps(done, indent=1) + chr(10)
+    (shard / DONE_FILE).write_text(text, encoding="utf-8")
 
 
 def run_pool_shards(
@@ -102,6 +116,7 @@ def run_pool_shards(
             "truncated": sum(g["finish_reason"] != "stop" for g in gens),
         }
         marker.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        write_shard_done(shard)
         report["shards"][shard.name] = summary
         ran += 1
         if on_shard_done is not None:
