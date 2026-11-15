@@ -188,7 +188,7 @@ def train(
         f"mean {sum(lengths) / len(lengths):.0f}",
         flush=True,
     )
-    # fp32 master weights under bf16 autocast: a 1e-6 step on bf16 weights is rounded away
+    # fp32 master weights under bf16 autocast: a 1e-6 step on bf16 weights rounds away
     init_kwargs = {"dtype": policy_dtype}
     if revision:
         init_kwargs["revision"] = revision
