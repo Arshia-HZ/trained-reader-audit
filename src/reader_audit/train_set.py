@@ -19,6 +19,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 from channel_audit.check_problems import CONFIGS, parse_level
 from channel_audit.extract import extract_boxed
@@ -200,3 +201,44 @@ def build_train_set(
 
 def ids_sha256(ids: Sequence[str]) -> str:
     return hashlib.sha256(json.dumps(sorted(ids)).encode()).hexdigest()
+
+
+def train_order(ids: Sequence[str], seed: int = SEED) -> list[str]:
+    """The training ids in a seeded order, so any prefix is a random sample of the set
+    (the pilot takes the first few hundred, the pool job works through it in shards)."""
+    ordered = sorted(ids)
+    random.Random(seed).shuffle(ordered)
+    return ordered
+
+
+def fetch_sources() -> tuple[list[TrainProblem], list[str], list[TrainProblem], dict]:
+    """MATH train (levels 3 to 5) and DeepScaleR from the Hub at their pinned revisions.
+
+    Returns the MATH problems, the ids of unusable MATH rows, the DeepScaleR problems,
+    and the revisions used. Needs ``huggingface_hub`` and ``pyarrow``.
+    """
+    import pyarrow.parquet as pq
+    from channel_audit.data import MATH_REVISION
+    from huggingface_hub import HfApi, hf_hub_download
+
+    def math_rows(config: str):
+        path = hf_hub_download(
+            MATH_REPO,
+            f"{config}/train-00000-of-00001.parquet",
+            repo_type="dataset",
+            revision=MATH_REVISION,
+        )
+        return pq.read_table(path).to_pylist()
+
+    math_train, unusable = load_math_train(math_rows)
+    scaler_rev = HfApi().dataset_info(DEEPSCALER_REPO).sha
+    path = hf_hub_download(
+        DEEPSCALER_REPO, "deepscaler.json", repo_type="dataset", revision=scaler_rev
+    )
+    scaler = load_deepscaler(json.loads(Path(path).read_text("utf-8")))
+    return (
+        math_train,
+        unusable,
+        scaler,
+        {"math": MATH_REVISION, "deepscaler": scaler_rev},
+    )
