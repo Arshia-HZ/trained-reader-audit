@@ -384,13 +384,16 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
   is accepted I would keep 1 point. **Update 2026-11-15 (R13), with the SD measured on dev
   (0.172 at 16 draws, 720 problems):** the 1-point margin has 14% power at the Holm worst
   case; margins of 2, 2.5 and 3 points give 69%, 90% and 98%. A margin of about 2 points
-  would reach the 70% target. Still open; the margin is not changed.
+  would reach the 70% target. **Owner's decision 2026-11-15: keep 1 point for now and
+  revisit at the freeze with the pilot's SD of the trained reader.**
 - **O4. H1 planning effect.** The planning effect of 1.5 points is at 48% power under Holm
   with SD 0.18; the effects Stage 0 makes plausible give at least 98%. No change proposed;
   stated so that the planning effect is not mistaken for the expected one. **Update
   2026-11-15 (R13), SD measured 0.152 at 16 draws:** 1.5 points has 67% power at the worst
-  case; 1.54 points would give 70%, 2 points 93%. Still open; the planning effect is not
-  changed.
+  case; 1.54 points would give 70%, 2 points 93%. **Owner's decision 2026-11-15: keep
+  1.5 points for now and revisit at the freeze with the pilot's SD.** (O3 and O4 are
+  therefore deferred, not closed: the freeze must state them again with the trained
+  reader's measured SD.)
 
 ## 10. Change log
 
@@ -471,7 +474,8 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
   - **R13, untrained reader on dev (2026-11-15).** The job of section 7 ran once, as
     designed in R11: 16 draws, 2 replicates, K = 8, level-5 dev. *Nothing preregistered
     changed:* D15's provisional 16 draws stands (it is also the rule's fallback), and O3
-    and O4 stay open with measured numbers (section 9). The SD of H1b and the
+    and O4 carry measured numbers (section 9); on 2026-11-15 the owner kept the H4a margin
+    (1 point) and the H1 planning effect (1.5 points) and deferred both to the freeze. The SD of H1b and the
     difference-in-differences of H2 are proxies (stated in section 7), to be replaced by
     the pilot's. The 1.7B pool's generation limit is 2,048 tokens and 14.2% of its level-5
     candidates hit it (R12's item (ii) is thereby bounded for dev: the cap is to be checked
