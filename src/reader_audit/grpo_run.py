@@ -65,6 +65,29 @@ class BatchRecorder:
         return self.reward(completions, gold)
 
 
+class PhaseTimer:
+    """Seconds spent generating and scoring rollouts since the last read."""
+
+    def __init__(self) -> None:
+        self.generation = 0.0
+
+    def wrap(self, trainer) -> None:
+        inner = trainer._generate_and_score_completions
+
+        def timed(*args, **kwargs):
+            start = time.monotonic()
+            try:
+                return inner(*args, **kwargs)
+            finally:
+                self.generation += time.monotonic() - start
+
+        trainer._generate_and_score_completions = timed
+
+    def take(self) -> float:
+        out, self.generation = self.generation, 0.0
+        return out
+
+
 class RunLog(TrainerCallback):
     def __init__(
         self,
@@ -72,7 +95,9 @@ class RunLog(TrainerCallback):
         rows: Sequence[dict],
         out_dir: Path,
         uploader: CheckpointUploader | None = None,
+        timer: PhaseTimer | None = None,
     ) -> None:
+        self.timer = timer
         self.plan = plan
         self.rows = rows
         self.path = out_dir / "steps.jsonl"
@@ -96,9 +121,11 @@ class RunLog(TrainerCallback):
             if torch.cuda.is_available()
             else 0.0
         )
+        generation = self.timer.take() if self.timer is not None else None
         record = {
             "step": state.global_step,
             "seconds": now - self.last,
+            "generation_seconds": generation,
             "mean_k": sum(r["k"] for r in rows) / max(len(rows), 1),
             "mean_prompt_tokens": sum(r["prompt_tokens"] for r in rows)
             / max(len(rows), 1),
@@ -196,14 +223,16 @@ def train(
     cfg = make_config(plan, out, **config_overrides)
     recorder = BatchRecorder(out / "batches.jsonl", plan.group_size, reward)
     recorder.__name__ = "correctness"
+    timer = PhaseTimer()
     trainer = GRPOTrainer(
         model=model_id,
         reward_funcs=recorder,
         args=cfg,
         train_dataset=Dataset.from_list(rows),
         processing_class=tokenizer,
-        callbacks=[RunLog(plan, rows, out, uploader)],
+        callbacks=[RunLog(plan, rows, out, uploader, timer)],
     )
+    timer.wrap(trainer)
     recorder.trainer = trainer
     last = get_last_checkpoint(str(out)) if resume else None
     if last:
