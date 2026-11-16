@@ -483,7 +483,12 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     prompt rewarded alike, 62–86% of groups in the pilot, mean 75%) skip their forward
     and backward pass, which is exact because the dapo normaliser is a constant of the
     generation batch and KL weight and entropy bonus are 0 (CPU check: identical gradient
-    norms and final weights, `scripts/21_grpo_resume_check.py`). *Measured seconds per
+    norms and final weights, `scripts/21_grpo_resume_check.py`; on the GPU, with the same
+    rollouts, losses and rollout tokens at steps 1 and 2, the gradient norm of a skipping run
+    differs from two non-skipping runs by 1 to 3 parts in 10,000 (step 1: 0.12510 against
+    0.12511 and 0.12512; step 2: 0.13511 against 0.13515 and 0.13513), while the two
+    non-skipping runs differ from each other by 1 part in 10,000, so the effect is at the
+    level of GPU run-to-run noise). *Measured seconds per
     step:* with (i) alone, 422 on average over 19 steps (range 351–494; generation 39%); with
     (i) and (ii), 280 (including warm-up), 233 and 230 over 3 steps, of which generation
     and scoring of the rollouts are about 70%. *Projection for 300 steps:* about 19 GPU-hours
@@ -503,7 +508,23 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     11–20: no movement was expected at learning rate 1e-6 with 10 warm-up steps over 20
     steps, so this pilot says nothing yet about whether the reader learns. *Not yet done:*
     uploading checkpoints (the private model repo is not created; this needs the owner's
-    go-ahead), the 50-step pilot, the solver arm's speed.
+    go-ahead), the 50-step pilot, the solver arm's speed. *Records:* step logs, batch logs
+    and trainer states of the pilot and the timing and noise runs are in the private dataset
+    `Arshia-HZ/trained-reader-audit-raw`, `grpo_pilot_2026-11-16/` (the 20 GB checkpoint is
+    not kept). *How the D7 figure will be measured (fixed here, before the 50-step pilot):*
+    the 19 GPU-hours above count step time only and were seen before this paragraph was
+    written, so they are not the figure the rule uses. The figure is `projected_hours`
+    (`grpo_plan.py`) on the 50-step pilot of the recipe of R15 with the importance-sampling
+    correction on: the mean seconds per step over steps 6 to 50, times 300; plus 12
+    checkpoint saves (every 25 steps) at the measured seconds of a save with its upload
+    (the upload blocks the GPU); plus one model and vLLM start-up per 10-hour session at the
+    measured start-up seconds. It is computed once and not re-extrapolated. The cost of a
+    step depends on the share of zero-variance groups, which will drift as reward moves, so
+    the 50-step window is not a stationary sample; the figure is a planning number, the
+    hours actually spent are reported at the end, and the seed count is not reopened by
+    them. Checkpoint uploads were checked against the real `huggingface_hub` matching: the
+    deletion pattern of `latest` is relative to its own folder and cannot remove the
+    milestone weights (tested).
   - **R15, the GRPO set-up (2026-11-15), [delegated]; recorded before any training
     run.** *Framework:* TRL 1.18.0 `GRPOTrainer` with colocated vLLM 0.33.0 (its metadata
     allows the evaluation version), in a separate training environment (the evaluation

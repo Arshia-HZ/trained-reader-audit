@@ -10,6 +10,7 @@ from reader_audit.grpo_plan import (
     assert_fits,
     build_rows,
     cumulative_rollout_tokens,
+    projected_hours,
     prompt_lengths,
     rollout_tokens,
     step_rows,
@@ -91,3 +92,23 @@ def test_rollout_tokens_rebuild_from_a_log_history():
     assert rollout_tokens(history[0], plan) == 800
     assert cumulative_rollout_tokens(history, plan) == 800 + 404
     assert cumulative_rollout_tokens([], plan) == 0
+
+
+def test_projected_hours_counts_steps_saves_and_session_starts():
+    plan = GrpoPlan(steps=300, save_every=25)
+    log = [{"step": 1, "seconds": 900.0}] + [
+        {"step": s, "seconds": 360.0} for s in range(2, 21)
+    ]
+    out = projected_hours(
+        log, plan, warmup_steps=5, save_seconds=600, session_start_seconds=900
+    )
+    assert out["window_steps"] == 15
+    assert out["steps_hours"] == pytest.approx(360 * 300 / 3600)  # 30 h
+    assert out["saves_hours"] == pytest.approx(12 * 600 / 3600)  # 2 h
+    assert out["sessions"] == 4 and out["starts_hours"] == pytest.approx(1.0)
+    assert out["total_hours"] == pytest.approx(33.0)
+    # a resumed step is counted once, with its last record
+    again = log + [{"step": 11, "seconds": 3600.0 * 10}]
+    assert projected_hours(again, plan, warmup_steps=5)["window_steps"] == 15
+    with pytest.raises(ValueError, match="warm-up"):
+        projected_hours(log[:3], plan, warmup_steps=5)

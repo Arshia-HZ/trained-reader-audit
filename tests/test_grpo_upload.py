@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from reader_audit.grpo_upload import CheckpointUploader
 
 
@@ -39,3 +41,29 @@ def test_a_failed_upload_is_reported_not_raised(tmp_path, capsys):
     up = CheckpointUploader(FakeApi(fail=True), "me/ckpt", "run1", milestones={25})
     assert up.on_checkpoint(25, tmp_path) == []
     assert "failed" in capsys.readouterr().out
+
+
+def test_deleting_latest_never_touches_the_milestone_weights():
+    # the real huggingface_hub matching: delete_patterns are relative to path_in_repo
+    hub = pytest.importorskip("huggingface_hub")
+    api = hub.HfApi()
+    files = [
+        "run1/latest/model.safetensors",
+        "run1/latest/sub/optimizer.pt",
+        "run1/step_0100/model.safetensors",
+        "run1/latest_old/model.safetensors",
+        "run2/latest/model.safetensors",
+        ".gitattributes",
+    ]
+    api.list_repo_files = lambda **kw: files
+    gone = api._prepare_folder_deletions(
+        repo_id="me/ckpt",
+        repo_type="model",
+        revision=None,
+        path_in_repo="run1/latest",
+        delete_patterns=["*"],
+    )
+    assert sorted(op.path_in_repo for op in gone) == [
+        "run1/latest/model.safetensors",
+        "run1/latest/sub/optimizer.pt",
+    ]

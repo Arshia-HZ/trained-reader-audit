@@ -114,6 +114,40 @@ def assert_fits(lengths: Sequence[int], plan: GrpoPlan) -> int:
     return longest
 
 
+def projected_hours(
+    records: Sequence[Mapping[str, float]],
+    plan: GrpoPlan,
+    *,
+    warmup_steps: int = 5,
+    save_seconds: float = 0.0,
+    session_start_seconds: float = 0.0,
+    session_hours: float = 10.0,
+) -> dict[str, float]:
+    """GPU-hours of a full run, from the step log of a pilot (the D7 input).
+
+    Mean seconds per step over the pilot's steps after the first ``warmup_steps``,
+    times the planned steps; plus one checkpoint save (with its upload) every
+    ``save_every`` steps; plus one model and vLLM start-up per session of
+    ``session_hours``. A step logged twice (a resume) counts once, the last record.
+    """
+    by_step = {int(r["step"]): r for r in records}
+    window = [by_step[s]["seconds"] for s in sorted(by_step) if s > warmup_steps]
+    if not window:
+        raise ValueError("no steps after the warm-up in the pilot log")
+    steps_hours = sum(window) / len(window) * plan.steps / 3600
+    saves_hours = plan.steps // plan.save_every * save_seconds / 3600
+    sessions = math.ceil((steps_hours + saves_hours) / session_hours)
+    starts_hours = sessions * session_start_seconds / 3600
+    return {
+        "steps_hours": steps_hours,
+        "saves_hours": saves_hours,
+        "sessions": float(sessions),
+        "starts_hours": starts_hours,
+        "total_hours": steps_hours + saves_hours + starts_hours,
+        "window_steps": float(len(window)),
+    }
+
+
 def rollout_tokens(entry: Mapping[str, float], plan: GrpoPlan) -> int:
     """Completion tokens generated in the step a log entry describes."""
     return round(entry["completions/mean_length"] * plan.completions_per_step)
