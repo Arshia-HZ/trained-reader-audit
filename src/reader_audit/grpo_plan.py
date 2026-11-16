@@ -9,9 +9,12 @@ checkpoint taken inside a cycle would shift the data on resume.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 from reader_audit import reader_prompts as rp
 from reader_audit.controls import Truncate
@@ -80,6 +83,32 @@ def build_rows(
             f"prompts ({need} needed); add problems or draws"
         )
     return rows[:need]
+
+
+def rows_digest(rows: Sequence[dict]) -> str:
+    """Hash of the prompts a run will consume, in order (problem, K, draw, stratum)."""
+    listing = chr(10).join(
+        f"{r['problem_id']}|{r['k']}|{r['draw']}|{r['stratum']}" for r in rows
+    )
+    return hashlib.sha256(listing.encode()).hexdigest()
+
+
+def check_same_rows(runs_path: str | Path, digest: str) -> None:
+    """Refuse to continue a run whose rows differ from those of its first start.
+
+    The rows are rebuilt from the pools on disk, so a machine with a different set of
+    shards would silently feed different prompts to the same step.
+    """
+    path = Path(runs_path)
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        first = json.loads(line).get("rows_sha256") if line.strip() else None
+        if first is not None and first != digest:
+            raise ValueError(
+                f"the rows of this run differ from those of its first start "
+                f"({digest[:12]} against {first[:12]}): the pools on disk differ"
+            )
 
 
 def step_rows(rows: Sequence[dict], plan: GrpoPlan, step: int) -> Sequence[dict]:

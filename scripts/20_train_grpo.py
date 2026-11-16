@@ -30,6 +30,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--model-config", default="configs/models/qwen3-1.7b-reader.yaml")
     ap.add_argument("--steps", type=int, default=300)
+    ap.add_argument(
+        "--seed",
+        type=int,
+        default=20261115,
+        help="seed 1 is 20261115, seed 2 20261116, seed 3 20261117 (PREREG R17)",
+    )
+    ap.add_argument("--expect-pools", type=int, help="refuse to run on another number")
     ap.add_argument("--prompts-per-step", type=int, default=64)
     ap.add_argument("--group-size", type=int, default=8)
     ap.add_argument("--per-device-batch", type=int, default=1)
@@ -65,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     plan = GrpoPlan(
         arm=args.arm,
         steps=args.steps,
+        seed=args.seed,
         prompts_per_step=args.prompts_per_step,
         group_size=args.group_size,
         per_device_batch=args.per_device_batch,
@@ -73,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
     plan.check()
     model = load_model_config(args.model_config)
     pools = load_pools(args.pools_root)
+    if args.expect_pools is not None and len(pools) != args.expect_pools:
+        raise SystemExit(f"{len(pools)} pools found, {args.expect_pools} expected")
     clipper = load_hf_clipper(model.model_id, model.revision)
     rows = build_rows(plan, pools, truncate=clipper, n_draws=args.n_draws)
     print(f"{len(pools)} problems, {len(rows)} prompts for {args.steps} steps")
@@ -83,7 +93,11 @@ def main(argv: list[str] | None = None) -> int:
 
         api = HfApi(token=os.environ["HF_TOKEN"])
         uploader = CheckpointUploader(
-            api, args.upload_repo, Path(args.out).name, args.milestones
+            api,
+            args.upload_repo,
+            Path(args.out).name,
+            args.milestones,
+            save_every=args.save_every,
         )
     if uploader is not None:
         from reader_audit.grpo_upload import fetch_latest

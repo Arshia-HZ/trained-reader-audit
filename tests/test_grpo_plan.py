@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from helpers import write_pool_shard
@@ -9,10 +11,12 @@ from reader_audit.grpo_plan import (
     GrpoPlan,
     assert_fits,
     build_rows,
+    check_same_rows,
     cumulative_rollout_tokens,
     projected_hours,
     prompt_lengths,
     rollout_tokens,
+    rows_digest,
     step_rows,
 )
 from reader_audit.pools import load_pools
@@ -112,3 +116,32 @@ def test_projected_hours_counts_steps_saves_and_session_starts():
     assert projected_hours(again, plan, warmup_steps=5)["window_steps"] == 15
     with pytest.raises(ValueError, match="warm-up"):
         projected_hours(log[:3], plan, warmup_steps=5)
+
+
+def test_a_resumed_run_must_see_the_same_rows_as_its_first_start(pools, tmp_path):
+    plan = GrpoPlan(steps=3, prompts_per_step=4, group_size=2)
+    rows = build_rows(plan, pools, truncate=None, cap=None)
+    digest = rows_digest(rows)
+    runs = tmp_path / "runs.jsonl"
+    check_same_rows(runs, digest)  # no earlier start: nothing to compare
+    runs.write_text(json.dumps({"rows_sha256": digest}) + chr(10))
+    check_same_rows(runs, digest)
+    other = build_rows(
+        GrpoPlan(steps=3, prompts_per_step=4, group_size=2, seed=1),
+        pools,
+        truncate=None,
+        cap=None,
+    )
+    assert rows_digest(other) != digest
+    with pytest.raises(ValueError, match="differ"):
+        check_same_rows(runs, rows_digest(other))
+
+
+def test_a_seed_changes_the_rows_and_the_easy_subset(pools):
+    a = build_rows(
+        GrpoPlan(steps=3, prompts_per_step=4, seed=1), pools, truncate=None, cap=None
+    )
+    b = build_rows(
+        GrpoPlan(steps=3, prompts_per_step=4, seed=2), pools, truncate=None, cap=None
+    )
+    assert rows_digest(a) != rows_digest(b)

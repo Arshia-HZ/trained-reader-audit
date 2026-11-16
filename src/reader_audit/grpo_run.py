@@ -30,9 +30,11 @@ from reader_audit.grpo_plan import (
     CHAT_KWARGS,
     GrpoPlan,
     assert_fits,
+    check_same_rows,
     cumulative_rollout_tokens,
     prompt_lengths,
     rollout_tokens,
+    rows_digest,
     step_rows,
 )
 from reader_audit.grpo_upload import CheckpointUploader
@@ -235,6 +237,9 @@ class RunLog(TrainerCallback):
             "rollout_tokens": tokens,
             "rollout_tokens_cum": total,
             "peak_gib": peak,
+            "grad_norm": logs.get("grad_norm"),
+            "clipped_ratio": logs.get("completions/clipped_ratio"),
+            "mean_length": logs.get("completions/mean_length"),
             "reward": logs.get("reward"),
             "loss": logs.get("loss"),
             "ids": [r["problem_id"] for r in rows],
@@ -338,11 +343,15 @@ def train(
     out.mkdir(parents=True, exist_ok=True)
     from reader_audit.training_freeze import environment_report
 
+    digest = rows_digest(rows)
+    check_same_rows(out / "runs.jsonl", digest)
     _append(
         out / "runs.jsonl",
         {
             "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "plan": plan.__dict__,
+            "rows_sha256": digest,
+            "n_rows": len(rows),
             "resume": resume,
             "skip_flat": skip_flat,
             "trim": trim,

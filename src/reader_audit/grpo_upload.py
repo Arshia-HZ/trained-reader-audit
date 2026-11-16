@@ -1,11 +1,17 @@
-"""Copies of training checkpoints on the private model repo, one run per folder.
+"""Copies of training checkpoints on private model repos.
 
-``latest`` holds the whole checkpoint (weights, optimizer, scheduler, RNG, trainer
-state) and is overwritten each time, so a run can resume on another machine
-(``fetch_latest``); it is removed once the run is complete. ``step_NNNN`` holds the
-weights only, cast once from the fp32 master weights to fp16, which is what the
-evaluation runs (PREREG D12, R17): 3.4 GB instead of 7 GB, and no further rounding. The
-step logs go to ``logs`` with every checkpoint. A failed upload is reported and never
+Resumable state (weights, optimizer, scheduler, RNG, trainer state: about 20 GB) goes to
+one of two repos in turn, ``<repo>-state-<run>-a`` and ``-b``. Hugging Face keeps the
+files of a repo's history in its storage count even after they are deleted, so a repo is
+deleted and created again before each upload instead of being overwritten: at most two
+states exist (about 40 GB), a failed upload never touches the newest complete one, and
+``fetch_latest`` resumes from whichever repo holds the higher step. Both are removed
+when the run completes.
+
+The main repo ``<repo>`` keeps, per run, the weights of the chosen steps in
+``step_NNNN`` (cast once from the fp32 master weights to fp16, which is what the
+evaluation runs, PREREG D12 and R17: 3.4 GB instead of 7 GB, with no further rounding)
+and the step logs in ``logs``. A failed upload is retried, then reported, and never
 stops training; the checkpoint stays on disk.
 """
 
@@ -14,6 +20,7 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import time
 from collections.abc import Callable, Collection
 from pathlib import Path
 
@@ -29,7 +36,10 @@ KEEP_BESIDE_WEIGHTS = (
     "chat_template",
     "model.safetensors.index.json",
 )
-FP16_MAX = 65504.0
+
+
+def state_repos(repo_id: str, run_name: str) -> tuple[str, str]:
+    return (f"{repo_id}-state-{run_name}-a", f"{repo_id}-state-{run_name}-b")
 
 
 def fp16_copy(src: Path, dst: Path) -> dict:
@@ -74,11 +84,19 @@ class CheckpointUploader:
         repo_id: str,
         run_name: str,
         milestones: Collection[int] = (),
+        *,
+        save_every: int = 25,
+        attempts: int = 3,
+        wait: float = 15.0,
     ) -> None:
         self.api = api
         self.repo_id = repo_id
         self.run_name = run_name
         self.milestones = set(milestones)
+        self.save_every = save_every
+        self.attempts = attempts
+        self.wait = wait
+        self.states = state_repos(repo_id, run_name)
         self.on_hub: set[int] = set()  # milestones that reached the repo
         self.last_cast: dict | None = None
         self._made = False
@@ -100,6 +118,17 @@ class CheckpointUploader:
             **kw,
         )
 
+    def _put_state(self, step: int, folder: Path) -> None:
+        target = self.states[(step // self.save_every) % 2]
+        self.api.delete_repo(target, repo_type="model", missing_ok=True)
+        self.api.create_repo(target, repo_type="model", private=True, exist_ok=True)
+        self.api.upload_folder(
+            folder_path=str(folder),
+            repo_id=target,
+            repo_type="model",
+            path_in_repo=f"{self.run_name}/latest",
+        )
+
     def _milestone(self, step: int, folder: Path) -> None:
         with tempfile.TemporaryDirectory(prefix="fp16_") as tmp:
             report = fp16_copy(folder, Path(tmp))
@@ -109,20 +138,27 @@ class CheckpointUploader:
             self._put(Path(tmp), f"{self.run_name}/step_{step:04d}")
         self.on_hub.add(step)
 
+    def _attempt(self, name: str, job: Callable[[], None]) -> bool:
+        for attempt in range(1, self.attempts + 1):
+            try:
+                job()
+                return True
+            except Exception as exc:  # the checkpoint stays on disk
+                print(
+                    f"upload of {name} failed ({attempt}/{self.attempts}): "
+                    f"{type(exc).__name__}: {exc}",
+                    flush=True,
+                )
+                if attempt < self.attempts:
+                    time.sleep(self.wait * attempt)
+        return False
+
     def on_checkpoint(
         self, step: int, folder: str | Path, logs_dir: str | Path | None = None
     ) -> list[str]:
         """Upload what a checkpoint at ``step`` calls for; return what went up."""
         folder = Path(folder)
-        done: list[str] = []
-        jobs: list[tuple[str, Callable[[], None]]] = [
-            (
-                f"{self.run_name}/latest",
-                lambda: self._put(
-                    folder, f"{self.run_name}/latest", delete_patterns=["*"]
-                ),
-            )
-        ]
+        jobs: list[tuple[str, Callable[[], None]]] = []
         if logs_dir is not None:
             jobs.append(
                 (
@@ -134,6 +170,7 @@ class CheckpointUploader:
                     ),
                 )
             )
+        jobs.append((f"{self.run_name}/latest", lambda: self._put_state(step, folder)))
         if step in self.milestones:
             jobs.append(
                 (
@@ -141,31 +178,24 @@ class CheckpointUploader:
                     lambda: self._milestone(step, folder),
                 )
             )
-        for path, job in jobs:
-            try:
-                job()
-                done.append(path)
-            except Exception as exc:  # the checkpoint stays on disk
-                print(
-                    f"upload of {path} failed: {type(exc).__name__}: {exc}", flush=True
-                )
-        return done
+        return [name for name, job in jobs if self._attempt(name, job)]
 
     def finish(self, step: int) -> bool:
-        """Remove ``latest`` when the run is complete and its last milestone is up."""
+        """Remove the resumable state once the run is complete and its last milestone
+        is on the hub."""
         if not self.milestones or step < max(self.milestones):
             return False
         if max(self.milestones) not in self.on_hub:
-            print("final milestone not on the hub: keeping latest", flush=True)
+            print("final milestone not on the hub: keeping the state", flush=True)
             return False
-        try:
-            self.api.delete_folder(
-                f"{self.run_name}/latest", repo_id=self.repo_id, repo_type="model"
-            )
-        except Exception as exc:
-            print(f"removal of latest failed: {type(exc).__name__}", flush=True)
-            return False
-        return True
+        ok = True
+        for repo in self.states:
+            try:
+                self.api.delete_repo(repo, repo_type="model", missing_ok=True)
+            except Exception as exc:
+                print(f"removal of {repo} failed: {type(exc).__name__}", flush=True)
+                ok = False
+        return ok
 
 
 def fetch_latest(
@@ -176,7 +206,7 @@ def fetch_latest(
     download: Callable[..., str] | None = None,
     token: str | None = None,
 ) -> int | None:
-    """Bring ``latest`` and the logs of a run back from the hub to resume it here.
+    """Bring the newest resumable state and the logs of a run back from the hub.
 
     The checkpoint lands in ``out_dir/checkpoint-<step>`` (the name the trainer looks
     for) and the logs beside it, unless they exist. Returns the step, or None if the
@@ -187,28 +217,43 @@ def fetch_latest(
         return None
     if download is None:
         from huggingface_hub import snapshot_download as download
-    with tempfile.TemporaryDirectory(prefix="fetch_") as tmp:
+
+    def get(repo: str, patterns: list[str], where: str) -> bool:
         try:
             download(
-                repo_id=repo_id,
+                repo_id=repo,
                 repo_type="model",
-                allow_patterns=[f"{run_name}/latest/*", f"{run_name}/logs/*"],
-                local_dir=tmp,
+                allow_patterns=patterns,
+                local_dir=where,
                 token=token,
             )
+            return True
         except Exception as exc:
-            print(f"nothing fetched for {run_name}: {type(exc).__name__}", flush=True)
+            print(f"nothing fetched from {repo}: {type(exc).__name__}", flush=True)
+            return False
+
+    best: tuple[int, str] | None = None
+    with tempfile.TemporaryDirectory(prefix="peek_") as peek:
+        for repo in state_repos(repo_id, run_name):
+            where = str(Path(peek) / repo.replace("/", "__"))
+            if get(repo, [f"{run_name}/latest/trainer_state.json"], where):
+                state = Path(where) / run_name / "latest" / "trainer_state.json"
+                if state.is_file():
+                    step = int(json.loads(state.read_text("utf-8"))["global_step"])
+                    if best is None or step > best[0]:
+                        best = (step, repo)
+    if best is None:
+        return None
+    step, repo = best
+    with tempfile.TemporaryDirectory(prefix="fetch_") as tmp:
+        if not get(repo, [f"{run_name}/latest/*"], tmp):
             return None
-        latest = Path(tmp) / run_name / "latest"
-        state = latest / "trainer_state.json"
-        if not state.is_file():
-            return None
-        step = int(json.loads(state.read_text(encoding="utf-8"))["global_step"])
         out.mkdir(parents=True, exist_ok=True)
+        latest = Path(tmp) / run_name / "latest"
         shutil.move(str(latest), str(out / f"checkpoint-{step}"))
-        logs = Path(tmp) / run_name / "logs"
-        if logs.is_dir():
-            for path in logs.glob("*.jsonl"):
+    with tempfile.TemporaryDirectory(prefix="logs_") as tmp:
+        if get(repo_id, [f"{run_name}/logs/*"], tmp):
+            for path in (Path(tmp) / run_name / "logs").glob("*.jsonl"):
                 if not (out / path.name).exists():
                     shutil.move(str(path), str(out / path.name))
     return step
