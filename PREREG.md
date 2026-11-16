@@ -490,50 +490,72 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     recipe of R15 with the two exact changes of R16 (own-length scoring, skipping of
     zero-advantage rows) and fp32 master weights; the training set and its decontamination
     (R14); the pool model and settings; the seed count (D7, 3, R16); the files listed in
-    `configs/training_freeze.json` with their hashes. `scripts/20_train_grpo.py` verifies
+    `configs/training_freeze.json` with their hashes (combined sha256 `8842b64b…ea05`). `scripts/20_train_grpo.py` verifies
     them at start and refuses to run if one changed; each run records its commit, library
-    versions and GPU in `runs.jsonl`. The freeze commit carries the tag
-    `stage2-training-freeze`. The 50-step pilot (R16 addendum) and a further speed-up that
-    would skip the scoring pass of zero-advantage groups are not part of it. *Checked at
-    the freeze:* AggLM's easy-set share. The paper's wording is ambiguous (the mixture
-    adds "p% of easy examples" with p = 50%, while the caption of its Table 4 reads
-    "percentage of easy sets relative to hard examples"); I keep all hard sets and half of
-    the easy sets, the roadmap's reading. On the 400 pilot problems that is 2,134 hard and
-    1,375 easy rows (39% easy); the other reading would give about 1,067 easy rows (33%).
-    The DeepScaleR share (34% of the problems) is kept. *Training problems used:* the first
-    2,400 of the seeded order (the 400 of the pilot pools and 2,000 more); 300 steps of 64
-    prompts need 19,200 rows, about 21,000 are available (an estimate from the pilot
-    rate), the other 5,187 problems are unused. *Not frozen yet, and fixed before any
-    trained checkpoint is evaluated on a confirmatory set:* the analysis and contrast code,
-    the evaluation draws, the probe protocol (D13), ESC settings, the factorial contrasts
-    and the transfer prompts. The margin of H4a (1 point) and the planning effect of H1
-    (1.5 points) stay as the owner decided on 2026-11-15; the trained reader's SD, from
-    the dev evaluation of the selected seed-1 checkpoint, is stated beside them at that
-    second freeze, where the owner may revisit them (dev is not a confirmatory set).
-    *Run order:* reader seed 1; the health check below; the solver seed 1, matched on
-    cumulative rollout tokens to the reader seed 1; seeds 2 and 3 of both arms; the other
-    arms after the main ones. Seed 1 is a confirmatory run, not a pilot. *Health check*
-    (stop and ask the owner; none of these is a result): a non-finite loss or gradient
-    norm; a gradient norm above 10 times its median over steps 1–25 for three steps in a
-    row; the mean reward over any 25 steps after step 50 below half of its mean over steps
-    1–25; a mean completion length below 100 or above 1,500 tokens over 25 steps; more
-    than 25% of completions at the 2,048 cap over 25 steps; or a mean step time above 300 s
-    (1.25 times the pilot's) over 25 steps. If the recipe must change after seed 1 has run,
-    that run is reported as a pilot and a dated deviation is logged. *Evaluation:* no
-    trained checkpoint is evaluated on a confirmatory set until all planned runs are
-    trained and the second freeze is taken; the dev evaluation of steps 100, 200 and 300
-    (the checkpoint rule) is the only evaluation before that. *Storage (amends D12):* a
+    versions, GPU and the hash of its row sequence in `runs.jsonl`, and a restart refuses to
+    continue if its rows differ from those of the first start (the rows are rebuilt from
+    the pools on disk, so a machine with other shards would silently change the prompts of
+    a step). The freeze commit carries the tag `stage2-training-freeze`. The 50-step pilot
+    (R16 addendum) and a further speed-up that would skip the scoring pass of
+    zero-advantage groups are not part of it. G3 (stable pilot, throughput fits the budget)
+    is passed on the 20-step pilot of R16 and the health check below; the part of G3 that
+    asks for the analysis code to be hashed moves to the second freeze. *Seeds:* seed k of
+    an arm runs with `--seed` 20261114 + k (20261115, 20261116, 20261117), which sets which
+    easy sets are kept, the order of the rows and the trainer's data seed. TRL fixes the
+    seed of the vLLM sampler (to 0), so seeds differ in their data and not in sampling
+    noise. *Checked at the freeze:* AggLM's easy-set share. The paper's wording is
+    ambiguous (the mixture adds "p% of easy examples" with p = 50%, while the caption of
+    its Table 4 reads "percentage of easy sets relative to hard examples"); I keep all
+    hard sets and half of the easy sets, the roadmap's reading. On the 400 pilot problems
+    that is 2,134 hard and 1,375 easy rows (39% easy); the other reading would give about
+    1,067 easy rows (33%). The DeepScaleR share (34% of the problems) is kept. *Training
+    problems used:* the first 2,400 of the seeded order (the 400 of the pilot pools and
+    2,000 more, 24 shards); 300 steps of 64 prompts need 19,200 rows and about 21,000 are
+    available (an estimate from the pilot rate); the other 5,187 problems are unused.
+    *Not frozen yet, and fixed before any trained checkpoint is evaluated on a confirmatory
+    set (the second freeze):* the analysis and contrast code, the evaluation draws, the
+    probe protocol (D13), ESC settings, the factorial contrasts and the transfer prompts.
+    The margin of H4a (1 point) and the planning effect of H1 (1.5 points) stay as the
+    owner decided on 2026-11-15; the trained reader's SD, from the dev evaluation of the
+    selected seed-1 checkpoint, is stated beside them at that second freeze, where the
+    owner may revisit them (dev is not a confirmatory set). *Run order:* reader seed 1; the
+    health check below; the solver seed 1; seeds 2 and 3 of both arms; the other arms
+    after the main ones. Seed 1 is a confirmatory run, not a pilot. *Open until the solver
+    run:* whether its token match counts rollout tokens only (R15) or rollout plus pool
+    tokens (section 8.1); a matched run needs more than 300 steps, so its milestone is its
+    final step, not step 300. *Health check* (stop and ask the owner; none of these is a
+    result): a non-finite loss or gradient norm; a gradient norm above 10 times its median
+    over steps 1–25 for three steps in a row; the mean reward over any 25 steps after step
+    50 below half of its mean over steps 1–25; a mean completion length below 100 or above
+    1,500 tokens over 25 steps; more than 25% of completions at the 2,048 cap over 25
+    steps; a mean step time above 300 s (1.25 times the pilot's) over 25 steps; a
+    checkpoint whose resumable state or milestone did not reach the hub (the `uploaded`
+    list of `saves.jsonl`); or a restart whose row hash differs. All but the last two are
+    computed from `steps.jsonl`, which records the gradient norm, the clipped share and
+    the mean length of every step. If the recipe must change after seed 1 has run, that
+    run is reported as a pilot and a dated deviation is logged. *Evaluation:* no trained
+    checkpoint is evaluated on a confirmatory set until all planned runs are trained and
+    the second freeze is taken; the dev evaluation of steps 100, 200 and 300 (the
+    checkpoint rule) is the only evaluation before that. *Storage (amends D12):* a
     milestone is stored once, cast from the fp32 master weights to fp16 (no bf16 copy),
     3.4 GB, with a check that every value is finite, and this is the model that is
     evaluated; D12's sanity check (no NaN or inf, greedy agreement with the training
     engine's bf16 on 200 prompts) stays. On a real Qwen3-1.7B checkpoint the conversion
     gave 3.44 GB, 310 tensors, a largest weight of 153, no non-finite value, the same
     top-1 token and a largest logit difference of 0.04 against fp32. The reader keeps
-    steps 100, 200 and 300, the solver step 300; the 20 GB `latest` is removed when a run
-    completes; the step logs go to the hub with every checkpoint, and a run resumes from
-    the hub on a new machine. The estimate for three seeds of both arms is about 60 GB
-    (3 × 10 GB of reader milestones, 3 × 3.4 GB of solver weights, one `latest` of 20 GB
-    at a time), against the 250 GB of the earlier plan.
+    steps 100, 200 and 300, the solver its final step; the step logs go to the hub with
+    every checkpoint. The resumable state (about 20 GB) alternates between two private
+    repos, each deleted and created again before its upload, because Hugging Face keeps
+    the files of a repo's history in its storage count: the empty checkpoint repo still
+    showed 20.66 GB after the test upload was deleted and its history squashed, and
+    recreating the repo freed it. At most two states exist (about 40 GB), a failed upload
+    never touches the newest complete one, a restart on a new machine resumes from the
+    newer of the two, and both are deleted when the run completes. Upload, alternation,
+    resume and removal were tested against the real hub with small files. The estimate
+    for three seeds of both arms is about 80 GB at its peak (40 GB of states of the run in
+    progress, 3 × 10 GB of reader milestones and 3 × 3.4 GB of solver weights), against the
+    250 GB of the earlier plan; the owner's quota of about 100 GB for private storage is to
+    be checked at each session.
   - **R16, the 20-step GRPO pilot and its cost (2026-11-16), [delegated].** Reader arm,
     the 400 pilot problems, recipe of R15, on one RTX PRO 6000 (molab). *Speed:* the first
     attempt took more than 30 minutes for one step, because TRL pads every micro-batch of
