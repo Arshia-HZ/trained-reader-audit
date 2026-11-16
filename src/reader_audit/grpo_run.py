@@ -249,7 +249,9 @@ class RunLog(TrainerCallback):
         uploaded: list[str] = []
         if self.uploader is not None:
             folder = Path(args.output_dir) / f"checkpoint-{state.global_step}"
-            uploaded = self.uploader.on_checkpoint(state.global_step, folder)
+            uploaded = self.uploader.on_checkpoint(
+                state.global_step, folder, logs_dir=self.out_dir
+            )
         now = time.monotonic()
         _append(
             self.out_dir / "saves.jsonl",
@@ -261,6 +263,14 @@ class RunLog(TrainerCallback):
             },
         )
         self.last = now  # step seconds leave out the save and the upload
+
+
+def _finish(self, args, state, control, **kw):
+    if self.uploader is not None and state.global_step >= self.plan.steps:
+        self.uploader.finish(state.global_step)
+
+
+RunLog.on_train_end = _finish
 
 
 def make_config(plan: GrpoPlan, out_dir: str | Path, **kw) -> GRPOConfig:

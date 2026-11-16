@@ -77,6 +77,17 @@ def main(argv: list[str] | None = None) -> int:
         uploader = CheckpointUploader(
             api, args.upload_repo, Path(args.out).name, args.milestones
         )
+    if uploader is not None:
+        from reader_audit.grpo_upload import fetch_latest
+
+        step = fetch_latest(
+            args.upload_repo,
+            Path(args.out).name,
+            args.out,
+            token=os.environ["HF_TOKEN"],
+        )
+        if step is not None:
+            print(f"fetched the checkpoint of step {step} from the hub", flush=True)
     train(
         plan,
         rows,
