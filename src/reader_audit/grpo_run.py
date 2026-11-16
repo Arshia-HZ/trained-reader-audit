@@ -192,10 +192,20 @@ class RunLog(TrainerCallback):
         self.rows = rows
         self.path = out_dir / "steps.jsonl"
         self.uploader = uploader
-        self.last = time.monotonic()
+        self.out_dir = out_dir
+        self.created = time.monotonic()  # the trainer (model and vLLM) is built next
+        self.last = self.created
 
     def on_train_begin(self, args, state, control, **kw):
         self.last = time.monotonic()
+        # model and vLLM start-up: from this callback's creation to the first step
+        _append(
+            self.out_dir / "starts.jsonl",
+            {
+                "startup_seconds": self.last - self.created,
+                "resumed_at": state.global_step,
+            },
+        )
 
     def on_log(self, args, state, control, logs=None, **kw):
         if not logs or "completions/mean_length" not in logs:
@@ -233,9 +243,24 @@ class RunLog(TrainerCallback):
         self.last = now
 
     def on_save(self, args, state, control, **kw):
+        # the log of a step comes just before its save, so the time since it is the save
+        started = time.monotonic()
+        save_seconds = started - self.last
+        uploaded: list[str] = []
         if self.uploader is not None:
             folder = Path(args.output_dir) / f"checkpoint-{state.global_step}"
-            self.uploader.on_checkpoint(state.global_step, folder)
+            uploaded = self.uploader.on_checkpoint(state.global_step, folder)
+        now = time.monotonic()
+        _append(
+            self.out_dir / "saves.jsonl",
+            {
+                "step": state.global_step,
+                "save_seconds": save_seconds,
+                "upload_seconds": now - started,
+                "uploaded": uploaded,
+            },
+        )
+        self.last = now  # step seconds leave out the save and the upload
 
 
 def make_config(plan: GrpoPlan, out_dir: str | Path, **kw) -> GRPOConfig:
