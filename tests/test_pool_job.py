@@ -87,3 +87,10 @@ def test_the_training_order_is_a_seeded_permutation():
     order = train_order(ids)
     assert sorted(order) == sorted(ids) and order == train_order(list(reversed(ids)))
     assert order != sorted(ids) and train_order(ids, seed=1) != order
+
+
+def test_a_later_batch_continues_the_shard_numbering(world):
+    report = run(world, first_index=4, max_shards=1)
+    assert list(report["shards"]) == [shard_name(4)]
+    assert (world["out"] / shard_name(4) / DONE).is_file()
+    assert not (world["out"] / shard_name(0)).exists()

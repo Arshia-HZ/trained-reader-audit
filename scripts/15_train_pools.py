@@ -37,6 +37,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--offset", type=int, default=0)
     ap.add_argument("--shard-size", type=int, default=100)
     ap.add_argument("--max-shards", type=int)
+    ap.add_argument(
+        "--first-shard", type=int, default=0, help="number of the first shard folder"
+    )
     ap.add_argument("--samples", type=int, default=16)
     ap.add_argument("--upload", action="store_true")
     ap.add_argument("--slug", default="train_pools_qwen3-1.7b")
@@ -74,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         samples=args.samples,
         shard_size=args.shard_size,
         max_shards=args.max_shards,
+        first_index=args.first_shard,
         on_shard_done=on_done,
     )
     for name, s in report["shards"].items():

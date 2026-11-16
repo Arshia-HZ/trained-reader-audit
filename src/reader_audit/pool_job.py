@@ -60,6 +60,7 @@ def run_pool_shards(
     samples: int = 16,
     shard_size: int = 100,
     max_shards: int | None = None,
+    first_index: int = 0,
     on_shard_done: Callable[[Path, int], None] | None = None,
 ) -> dict:
     """Run (or resume) the pool job in the order of ``problems``; return per shard."""
@@ -81,6 +82,7 @@ def run_pool_shards(
     report: dict = {"n_shards": len(shards), "shards": {}}
     ran = 0
     for index, chunk in enumerate(shards):
+        index += first_index  # a later batch of problems continues the numbering
         shard = out / shard_name(index)
         marker = shard / DONE
         if marker.is_file():
