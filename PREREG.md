@@ -347,6 +347,11 @@ weeks 7–8 (to about 2027-01-06); with 5 seeds training is weeks 3–6, evaluat
 Stage 4 weeks 8–9 (to about 2027-01-13). The factorial's cut date, 2027-01-17, is binding
 either way and the factorial is cut first.
 
+**Update 2026-11-16 (R16, measured at the pilot).** A 300-step reader run is about 20 GPU-hours
+and a 300-step solver run about 10.5 (tokens-matched solver runs about 14 to 18, an estimate), so
+with 3 seeds the training of the two main arms is about 61 + 41 to 53 = 102 to 114 GPU-hours, inside
+the table's 105 to 240. The table is not recomputed here; `schedule.py` is updated at the freeze.
+
 **Compute available (owner, 2026-11-14).** One RTX PRO 6000 (Blackwell) in short sessions
 of about 10 hours, not long continuous access. Consequences: every job is sharded,
 resumable and uploaded when it finishes a shard; the order is the main runs first (G2, the
@@ -506,12 +511,10 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     on-policy); entropy about 0.2; 1–3% of completions reach the 2,048 cap; peak GPU
     memory 60 GiB allocated, vLLM share 0.3. Mean reward 0.49 over steps 1–10 and 0.48 over
     11–20: no movement was expected at learning rate 1e-6 with 10 warm-up steps over 20
-    steps, so this pilot says nothing yet about whether the reader learns. *Not yet done:*
-    uploading checkpoints (the private model repo is not created; this needs the owner's
-    go-ahead), the 50-step pilot, the solver arm's speed. *Records:* step logs, batch logs
+    steps, so this pilot says nothing yet about whether the reader learns. *Records:* step logs, batch logs
     and trainer states of the pilot and the timing and noise runs are in the private dataset
     `Arshia-HZ/trained-reader-audit-raw`, `grpo_pilot_2026-11-16/` (the 20 GB checkpoint is
-    not kept). *How the D7 figure will be measured (fixed here, before the 50-step pilot):*
+    not kept). *How the D7 figure was to be measured (fixed before the 50-step pilot; amended below):*
     the 19 GPU-hours above count step time only and were seen before this paragraph was
     written, so they are not the figure the rule uses. The figure is `projected_hours`
     (`grpo_plan.py`) on the 50-step pilot of the recipe of R15 with the importance-sampling
@@ -525,6 +528,31 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     them. Checkpoint uploads were checked against the real `huggingface_hub` matching: the
     deletion pattern of `latest` is relative to its own folder and cannot remove the
     milestone weights (tested).
+    *Addendum, later on 2026-11-16 (owner delegated the choice, [delegated]):* **the 50-step
+    pilot is not run**, to save GPU time. What it would have added (stability beyond the
+    10 warm-up steps, a longer window for the cost figure) is replaced by watching the step
+    log of each main run from its first step and stopping a run that diverges; checkpoints
+    are resumable. The D7 protocol above is amended accordingly: the window is the four
+    steps after the first of the runs that had flat-row skipping (steps 2 and 3 of one run,
+    step 2 of three others), with the saves and start-up measured below. *Measured:* a
+    reader step takes 238 s on average over those four (230–251), a solver step about 122 s
+    (115, 121, 130; the first step, 124). A checkpoint save takes 26 s; uploading the
+    20 GB `latest` and the 7 GB milestone weights (fp32) together takes 51 s; model and
+    vLLM start-up takes 197 s on a fresh machine (28 s once cached). The private model repo
+    `Arshia-HZ/trained-reader-audit-ckpt` was created (owner's go-ahead); the throwaway test
+    upload was removed from it. Peak GPU memory 59.7 GiB (reader) and 56.8 GiB (solver).
+    *Result of the rule (`projected_hours`, 300 steps, 12 saves of 76 s, three sessions):*
+    reader 19.8 h of steps + 0.25 h of saves + 0.16 h of start-up = **20.3 GPU-hours**;
+    solver 10.1 + 0.25 + 0.06 = 10.5 GPU-hours for 300 steps. The reader figure is above
+    20, so by the rule as written **D7 gives 3 seeds**; the margin is far inside the error
+    of a four-step window (the step times of the 19 unskipped pilot steps varied by 10%),
+    so this is a rule outcome, not evidence that 5 seeds are unaffordable; the freeze
+    restates it, and the actual hours of the main runs are reported at the end. A
+    solver-GRPO run matched on tokens needs more steps than 300 (the roadmap's factor is
+    1.3 to 1.7, so about 14 to 18 h, an estimate). Storage: a run keeps about 20 GB of
+    `latest` and 7 GB per milestone, about 41 GB, so six runs would hold about 250 GB on the
+    private repo; the owner should check the storage plan (milestone weights could be saved
+    in bf16, halving their size, if needed).
   - **R15, the GRPO set-up (2026-11-15), [delegated]; recorded before any training
     run.** *Framework:* TRL 1.18.0 `GRPOTrainer` with colocated vLLM 0.33.0 (its metadata
     allows the evaluation version), in a separate training environment (the evaluation
