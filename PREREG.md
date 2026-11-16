@@ -491,8 +491,8 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     count is **not** decided here: the freeze takes it from a longer measurement (the
     50-step pilot, if the owner approves it), with this figure as the estimate. A lever not
     used: turning off TRL's importance-sampling correction for the gap between the vLLM
-    sampler and the trainer would remove the scoring pass of all 512 rollouts (about 75 s a
-    step, 17 GPU-hours for 300 steps), but it changes the objective and was left on.
+    sampler and the trainer would remove the scoring pass of all 512 rollouts (an estimate, not
+    measured: about 75 s a step, 17 GPU-hours for 300 steps), but it changes the objective and was left on.
     *Resume on the real stack:* the run was killed after the step-10 checkpoint (20 GB:
     weights, optimizer, scheduler, RNG, trainer state) and restarted; the resumed run
     recomputed step 11 with the same prompts, the same 412,142 rollout tokens and the same
