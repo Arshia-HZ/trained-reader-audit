@@ -80,6 +80,7 @@ def worker(args) -> int:
         args.out,
         model_id=str(tiny),
         reward=mixed_reward,
+        skip_flat=args.skip_flat,
         use_vllm=False,
         bf16=False,
         gradient_checkpointing=False,
@@ -100,9 +101,11 @@ def by_step(records: list[dict]) -> dict[int, dict]:
     return {r["step"]: r for r in records}  # a repeated step keeps the last record
 
 
-def spawn(work: Path, out: Path, steps: int) -> subprocess.Popen:
+def spawn(work: Path, out: Path, steps: int, skip_flat: bool = False):
     cmd = [sys.executable, __file__, "--worker", "--work", str(work)]
     cmd += ["--out", str(out), "--steps", str(steps)]
+    if skip_flat:
+        cmd.append("--skip-flat")
     return subprocess.Popen(cmd)
 
 
@@ -204,6 +207,21 @@ def orchestrate(args) -> int:
     wa, wb = final_weights(a), final_weights(b)
     wgap = max(float((wa[k] - wb[k]).abs().max()) for k in wa)
     check(f"final weights identical (max gap {wgap:.2e})", wgap < 1e-6, hard=False)
+    c = work / "run_c"
+    assert spawn(work, c, args.steps, skip_flat=True).wait() == 0, "run C failed"
+    rows = by_step(read_jsonl(c / "steps.jsonl"))
+    seen = sum(r["rows_seen"] for r in rows.values())
+    skipped = sum(r["rows_skipped"] for r in rows.values())
+    check(f"flat rows were skipped in run C ({skipped} of {seen})", 0 < skipped < seen)
+    gc = history(c)
+    norms_c = [gc[s]["grad_norm"] for s in sorted(gc)]
+    gap = max(abs(x - y) for x, y in zip(norms_a, norms_c, strict=True))
+    check(
+        f"skipping flat rows keeps the gradient norms (max gap {gap:.2e})", gap < 1e-5
+    )
+    wc = final_weights(c)
+    wgap = max(float((wa[k] - wc[k]).abs().max()) for k in wa)
+    check(f"skipping flat rows keeps the weights (max gap {wgap:.2e})", wgap < 1e-6)
     print("OK" if ok else "FAILED")
     return 0 if ok else 1
 
@@ -214,5 +232,6 @@ if __name__ == "__main__":
     ap.add_argument("--steps", type=int, default=6)
     ap.add_argument("--out")
     ap.add_argument("--worker", action="store_true")
+    ap.add_argument("--skip-flat", action="store_true")
     ns = ap.parse_args()
     sys.exit(worker(ns) if ns.worker else orchestrate(ns))

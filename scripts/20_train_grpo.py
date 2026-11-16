@@ -40,6 +40,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--vllm-memory", type=float, default=0.3)
     ap.add_argument("--no-vllm", action="store_true")
     ap.add_argument(
+        "--keep-flat", action="store_true", help="do not skip zero-advantage rows"
+    )
+    ap.add_argument(
         "--policy-dtype", default="float32", choices=["float32", "bfloat16"]
     )
     ap.add_argument("--upload-repo")
@@ -84,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         policy_dtype=getattr(torch, args.policy_dtype),
         learning_rate=args.lr,
         warmup_steps=args.warmup_steps,
+        skip_flat=not args.keep_flat,
         use_vllm=not args.no_vllm,
         vllm_gpu_memory_utilization=args.vllm_memory,
     )

@@ -90,6 +90,48 @@ def trim_padding(inner):
     return trimmed
 
 
+class FlatSkipper:
+    """Skips the forward and backward pass of rows whose advantage is exactly zero.
+
+    A group whose samples all got the same reward has advantage 0 for every sample, so
+    its policy-gradient term is exactly 0. With the ``dapo`` loss the normaliser is a
+    constant of the generation batch, with no KL term (``beta`` 0) and no entropy bonus
+    nothing else touches the parameters, so dropping those rows leaves the gradient
+    unchanged (the sum loses only exact zeros) and saves their compute: about three
+    quarters of the rows on the reader task. ``take`` returns the rows skipped and seen
+    since the last call; the entropy and clip metrics TRL logs are averaged over the
+    rows that were not skipped.
+    """
+
+    def __init__(self) -> None:
+        self.skipped = 0
+        self.seen = 0
+
+    def wrap(self, trainer) -> None:
+        if trainer.loss_type != "dapo" or trainer.beta != 0.0:
+            raise ValueError("flat groups can only be skipped for dapo with beta = 0")
+        if trainer._entropy_bonus_enabled or trainer.aux_loss_enabled:
+            raise ValueError("flat groups cannot be skipped with an entropy bonus")
+        inner = trainer._compute_loss
+        anchor = min(
+            (p for p in trainer.model.parameters() if p.requires_grad),
+            key=lambda p: p.numel(),
+        )
+
+        def compute(model, inputs):
+            self.seen += 1
+            if bool((inputs["advantages"] == 0).all()):
+                self.skipped += 1
+                return anchor.sum() * 0.0  # a loss with a graph and a zero gradient
+            return inner(model, inputs)
+
+        trainer._compute_loss = compute
+
+    def take(self) -> tuple[int, int]:
+        out, (self.skipped, self.seen) = (self.skipped, self.seen), (0, 0)
+        return out
+
+
 class BatchRecorder:
     """Wraps the reward so each generation batch leaves a record of its prompts."""
 
@@ -142,8 +184,10 @@ class RunLog(TrainerCallback):
         out_dir: Path,
         uploader: CheckpointUploader | None = None,
         timer: PhaseTimer | None = None,
+        skipper: FlatSkipper | None = None,
     ) -> None:
         self.timer = timer
+        self.skipper = skipper
         self.plan = plan
         self.rows = rows
         self.path = out_dir / "steps.jsonl"
@@ -168,10 +212,13 @@ class RunLog(TrainerCallback):
             else 0.0
         )
         generation = self.timer.take() if self.timer is not None else None
+        skipped, seen = self.skipper.take() if self.skipper is not None else (0, 0)
         record = {
             "step": state.global_step,
             "seconds": now - self.last,
             "generation_seconds": generation,
+            "rows_skipped": skipped,
+            "rows_seen": seen,
             "mean_k": sum(r["k"] for r in rows) / max(len(rows), 1),
             "mean_prompt_tokens": sum(r["prompt_tokens"] for r in rows)
             / max(len(rows), 1),
@@ -248,6 +295,7 @@ def train(
     reward=correctness_reward,
     policy_dtype=torch.float32,
     trim=True,
+    skip_flat=True,
     **config_overrides,
 ):
     out = Path(out_dir)
@@ -271,19 +319,22 @@ def train(
     recorder = BatchRecorder(out / "batches.jsonl", plan.group_size, reward)
     recorder.__name__ = "correctness"
     timer = PhaseTimer()
+    skipper = FlatSkipper()
     trainer = GRPOTrainer(
         model=model_id,
         reward_funcs=recorder,
         args=cfg,
         train_dataset=Dataset.from_list(rows),
         processing_class=tokenizer,
-        callbacks=[RunLog(plan, rows, out, uploader, timer)],
+        callbacks=[RunLog(plan, rows, out, uploader, timer, skipper)],
     )
     timer.wrap(trainer)
     if trim:
         trainer._get_per_token_logps_and_entropies = trim_padding(
             trainer._get_per_token_logps_and_entropies
         )
+    if skip_flat:
+        skipper.wrap(trainer)
     recorder.trainer = trainer
     last = get_last_checkpoint(str(out)) if resume else None
     if last:
