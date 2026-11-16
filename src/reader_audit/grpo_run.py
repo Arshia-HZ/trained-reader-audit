@@ -20,6 +20,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import torch
+import torch.nn.functional as F
 from datasets import Dataset
 from transformers import AutoTokenizer, TrainerCallback
 from transformers.trainer_utils import get_last_checkpoint
@@ -42,6 +43,51 @@ def _append(path: Path, record: dict) -> None:
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record) + "\n")
         fh.flush()
+
+
+_SCORING_OPTIONS = ("batch_size", "compute_entropy", "compute_aux_loss")
+
+
+def trim_padding(inner):
+    """Score each sequence at its own length instead of the batch's longest.
+
+    TRL pads a whole generation batch to its longest prompt and longest completion and
+    scores every micro-batch at that size. With 512 sequences the longest is near the
+    window, so each one costs about twice its own length (and attention grows with the
+    square). This wrapper cuts the left padding of the prompt and the right padding of
+    the completion, scores the row alone, and pads the result back to the shape the loss
+    expects (padded positions are masked there). Relative positions are unchanged, so
+    the scores match the padded ones up to numerical noise. Anything that is not plain
+    text goes through ``inner`` untouched.
+    """
+
+    def trimmed(model, input_ids, attention_mask, logits_to_keep, **kw):
+        if any(v is not None for k, v in kw.items() if k not in _SCORING_OPTIONS):
+            return inner(model, input_ids, attention_mask, logits_to_keep, **kw)
+        kw = dict(kw, batch_size=1)
+        width = input_ids.size(1)
+        logps, entropies, aux = [], [], []
+        for i in range(input_ids.size(0)):
+            ids, mask = input_ids[i : i + 1], attention_mask[i : i + 1]
+            live = mask[0].nonzero().flatten()
+            lo, hi = int(live[0]), int(live[-1]) + 1
+            keep = logits_to_keep - (width - hi)
+            if keep < 1 or not bool(mask[0, lo:hi].all()):
+                lo, hi, keep = 0, width, logits_to_keep
+            lp, en, ax = inner(model, ids[:, lo:hi], mask[:, lo:hi], keep, **kw)
+            pad = logits_to_keep - keep
+            logps.append(F.pad(lp, (0, pad)))
+            if en is not None:
+                entropies.append(F.pad(en, (0, pad)))
+            if ax is not None:
+                aux.append(ax)
+        return (
+            torch.cat(logps, dim=0),
+            torch.cat(entropies, dim=0) if entropies else None,
+            torch.stack(aux).mean() if aux else None,
+        )
+
+    return trimmed
 
 
 class BatchRecorder:
@@ -201,6 +247,7 @@ def train(
     resume: bool = True,
     reward=correctness_reward,
     policy_dtype=torch.float32,
+    trim=True,
     **config_overrides,
 ):
     out = Path(out_dir)
@@ -233,6 +280,10 @@ def train(
         callbacks=[RunLog(plan, rows, out, uploader, timer)],
     )
     timer.wrap(trainer)
+    if trim:
+        trainer._get_per_token_logps_and_entropies = trim_padding(
+            trainer._get_per_token_logps_and_entropies
+        )
     recorder.trainer = trainer
     last = get_last_checkpoint(str(out)) if resume else None
     if last:
