@@ -472,6 +472,38 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R16, the 20-step GRPO pilot and its cost (2026-11-16), [delegated].** Reader arm,
+    the 400 pilot problems, recipe of R15, on one RTX PRO 6000 (molab). *Speed:* the first
+    attempt took more than 30 minutes for one step, because TRL pads every micro-batch of
+    a generation batch to its longest sequence (about 14,700 tokens in a 512-sample batch,
+    against a mean of about 6,000) and attention grows with the square of the length. Two
+    changes, neither of which alters the objective: (i) each sequence is scored at its own
+    length (`trim_padding`; scores equal the padded ones to 8e-5 in fp32, differences in
+    bf16 are rounding); (ii) rows whose advantage is exactly zero (all 8 samples of a
+    prompt rewarded alike, 62–86% of groups in the pilot, mean 75%) skip their forward
+    and backward pass, which is exact because the dapo normaliser is a constant of the
+    generation batch and KL weight and entropy bonus are 0 (CPU check: identical gradient
+    norms and final weights, `scripts/21_grpo_resume_check.py`). *Measured seconds per
+    step:* with (i) alone, 422 on average over 19 steps (range 351–494; generation 39%); with
+    (i) and (ii), 280 (including warm-up), 233 and 230 over 3 steps, of which generation
+    and scoring of the rollouts are about 70%. *Projection for 300 steps:* about 19 GPU-hours
+    with both changes (35 with (i) alone). That is at the 20-hour line of D7, so the seed
+    count is **not** decided here: the freeze takes it from a longer measurement (the
+    50-step pilot, if the owner approves it), with this figure as the estimate. A lever not
+    used: turning off TRL's importance-sampling correction for the gap between the vLLM
+    sampler and the trainer would remove the scoring pass of all 512 rollouts (about 75 s a
+    step, 17 GPU-hours for 300 steps), but it changes the objective and was left on.
+    *Resume on the real stack:* the run was killed after the step-10 checkpoint (20 GB:
+    weights, optimizer, scheduler, RNG, trainer state) and restarted; the resumed run
+    recomputed step 11 with the same prompts, the same 412,142 rollout tokens and the same
+    reward and loss, and its running token total agrees with the sum of its steps.
+    *Health over 20 steps:* no NaN; gradient norm 0.08–0.15; clip ratio 0 (every step is
+    on-policy); entropy about 0.2; 1–3% of completions reach the 2,048 cap; peak GPU
+    memory 60 GiB allocated, vLLM share 0.3. Mean reward 0.49 over steps 1–10 and 0.48 over
+    11–20: no movement was expected at learning rate 1e-6 with 10 warm-up steps over 20
+    steps, so this pilot says nothing yet about whether the reader learns. *Not yet done:*
+    uploading checkpoints (the private model repo is not created; this needs the owner's
+    go-ahead), the 50-step pilot, the solver arm's speed.
   - **R15, the GRPO set-up (2026-11-15), [delegated]; recorded before any training
     run.** *Framework:* TRL 1.18.0 `GRPOTrainer` with colocated vLLM 0.33.0 (its metadata
     allows the evaluation version), in a separate training environment (the evaluation
@@ -500,8 +532,8 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     prompts per step, the same rollout-token totals, the same gradient norms and the same
     final weights as the uninterrupted run (`scripts/21_grpo_resume_check.py`). *Not yet
     checked:* the colocated vLLM path, GPU memory and speed (the 20-step pilot is the first
-    test); the cost is an estimate only, about 3 to 5 minutes a step, which would put 300
-    steps above the 20-hour line of D7 and is why the pilot measures it. Changing any of
+    test); the cost was an estimate (superseded by R16, which measured about 4 minutes a
+    step after two fixes). Changing any of
     these after the pilot needs its own dated entry.
   - **R14, the training set and its decontamination rule (2026-11-15), [delegated].**
     *Rule:* the training problems are all MATH train problems of levels 3 to 5 plus a
