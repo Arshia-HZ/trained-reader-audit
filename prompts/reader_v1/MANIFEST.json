@@ -1,0 +1,9 @@
+{
+  "version": "reader_v1",
+  "files": {
+    "reader.txt": "d28a91fcc7a185a293b9142a77e20d0550512cbbd9b02b22626d41156f8d04dd",
+    "reader_answers.txt": "4cd045f108927853f736aed3fbfcad3c5020b449f2684f777a3dd3d2ff3b4cd0",
+    "reader_no_candidates.txt": "6ea44ea508d985e2b922031f3167a88ff473a61c5f501cd1a0885dab70d81973"
+  },
+  "combined_sha256": "0bb74ee57c19796e408acafb61f3a20c88b7b0cc71d8e2ad9b090a0c8bf635da"
+}

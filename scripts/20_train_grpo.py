@@ -45,15 +45,23 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--policy-dtype", default="float32", choices=["float32", "bfloat16"]
     )
+    ap.add_argument(
+        "--no-freeze-check", action="store_true", help="for tests only: skip the freeze"
+    )
     ap.add_argument("--upload-repo")
     ap.add_argument("--milestones", type=int, nargs="*", default=[100, 200, 300])
     args = ap.parse_args(argv)
 
     import torch
 
+    from reader_audit import training_freeze
     from reader_audit.grpo_run import train
     from reader_audit.grpo_upload import CheckpointUploader
 
+    frozen = None
+    if not args.no_freeze_check:
+        frozen = training_freeze.verify()["combined_sha256"]  # raises if a file changed
+        print(f"training freeze verified: {frozen}", flush=True)
     plan = GrpoPlan(
         arm=args.arm,
         steps=args.steps,
@@ -95,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         model_id=model.model_id,
         revision=model.revision,
         uploader=uploader,
+        run_record={"argv": sys.argv[1:], "freeze_sha256": frozen},
         policy_dtype=getattr(torch, args.policy_dtype),
         learning_rate=args.lr,
         warmup_steps=args.warmup_steps,

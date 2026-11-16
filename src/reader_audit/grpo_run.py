@@ -331,10 +331,25 @@ def train(
     policy_dtype=torch.float32,
     trim=True,
     skip_flat=True,
+    run_record: dict | None = None,
     **config_overrides,
 ):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    from reader_audit.training_freeze import environment_report
+
+    _append(
+        out / "runs.jsonl",
+        {
+            "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "plan": plan.__dict__,
+            "resume": resume,
+            "skip_flat": skip_flat,
+            "trim": trim,
+            **(run_record or {}),
+            **environment_report(),
+        },
+    )
     tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
     lengths = prompt_lengths(rows, tokenizer)
     longest = assert_fits(lengths, plan)

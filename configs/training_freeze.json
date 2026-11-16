@@ -1,0 +1,25 @@
+{
+ "files": {
+  "prompts/reader_v1/MANIFEST.json": "02f75eccc2960ce5bc6c9c8526beb1bfc52f59f0230189f471deceb8c5f531f2",
+  "configs/models/qwen3-1.7b-pool.yaml": "5958716948caaefbda67efa1d239563d461e0d90c6a43b049ae912e3f230679f",
+  "configs/models/qwen3-1.7b-reader.yaml": "c2b2642a5ece513fd42ee9a39be0be8dccbeecc01f08b18f2ae05c995577d83b",
+  "data/train/ids.json": "ab49a95c4738cfabfa663dbdec6fd091784721dd0f6368b5b9d700e938faa723",
+  "data/train/manifest.json": "c484b65709a33343a41dff584754628d83ac767c2c439aa37a706f307624ead1",
+  "scripts/15_train_pools.py": "376a15f0ce7360cfe01aef55e4904fcce96b3d099fb68f47b3c21e4c43dfb8bd",
+  "scripts/20_train_grpo.py": "3de97099180a78b1556d8625426cc6ee4e59ee737a55b1897adf444c6beb1d77",
+  "src/reader_audit/arms.py": "05c26a33cce9e80b0b04c5ba28d99703a5ced6db7e1efbbb84b423a96153acad",
+  "src/reader_audit/cand_sets.py": "2b98e2e0cd29e522967a483f089c8557331349d44834706bd769e4e0a11f0897",
+  "src/reader_audit/clipper.py": "5dc35a33789a089342f8a0f9b1cda33a7032a4bc4698de21762d9eb046b9c0c4",
+  "src/reader_audit/controls.py": "c78c55369470a8e27194247c89f80c6588e32e58ddea25885aad11dd26e79146",
+  "src/reader_audit/grpo_plan.py": "613afdc31780eb91e3e733f7c4686dc728f16b8637fd26d427a08f3093a0f37f",
+  "src/reader_audit/grpo_run.py": "3635294755660b1b58c0fbfda5ad8596fbd20a664ee29e3dbeb9c357e87dd6e3",
+  "src/reader_audit/grpo_upload.py": "53761802ff580d5a3f8c267f2389301b84f1c59bdd5aa0f92c4b357a1f6dadf5",
+  "src/reader_audit/pool_job.py": "602660bdec6c36f76fa383ed08d01af8b776b29315b5a5ffff1e28cd9feec000",
+  "src/reader_audit/pools.py": "3e7fd7659d6be93d001a7a1401a6b5c27c1376b10abc8839c9b0493448192391",
+  "src/reader_audit/reader_prompts.py": "78ee2e39ce129c5b530f05a37bb1729b066e7932e0c6dd8f4aeed0073d351464",
+  "src/reader_audit/train_data.py": "6fa23042cfcb532a5b3e48b584920f33dada77252ea9ed9ff2b523ff1515859a",
+  "src/reader_audit/train_set.py": "c0f27aa91f0f162604017c8f42f21fda84a88d71ed96ba36f6890e819c3ec4a4",
+  "src/reader_audit/training_freeze.py": "72b36c0182eff955d8982e69c4bafdee24c0d480142cbdc1b05151e2f2c3b4b4"
+ },
+ "combined_sha256": "a572a80fd43986918c7e2de72cdf72fbeb0644773f13f0162ae045f6d57b7112"
+}

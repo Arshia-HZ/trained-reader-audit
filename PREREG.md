@@ -78,7 +78,7 @@ each said before. D23 to D26 are new.
 | D9 | Bootstrap (revised, R6) | Effect estimates: problem-level paired bootstrap on within-problem averages, 10,000 resamples, numpy `default_rng(0)`, percentile 95% intervals, as in the audit (its frozen `bootstrap_means` is reused). Strata are problem-level means over the candidate sets of that stratum; problems with no set in a stratum are left out of that stratum's analysis. **The decision is not the interval; it is D24.** | A bootstrap over problems already carries the within-problem noise. A nested resample would double-count it (conservatively); it is run as a sensitivity check. |
 | D10 | Holm families (revised, R6) | Family 1: H1a, H1b, H2, H3, H4a, H4b (m = 6 always; a hypothesis not run counts with p = 1). Family 2: H5a, H5b, H5c, H6 (m = 4), and the factorial contrasts only if that run is finished by its cut date (m is then 4 plus their number). Holm within each family at 0.05 on the two-sided scale of D24. | |
 | D11 | Priorities | Qwen3-0.6B reader: Must (the FLOP-accounting arm). Joint arm: Must, one seed. AggLM-1.7B checkpoint: Must if public (check in Stage 1), otherwise noted as unavailable. | The roadmap listed the joint arm and 0.6B as Must; the AggLM checkpoint's availability is unknown. |
-| D12 | Generation stack | Every generation that is evaluated (candidate pools, readers, solver-GRPO samples, the contamination probe) uses vLLM 0.33.0 in fp16 on the RTX PRO 6000, as the dev pools did. Training is bf16. A bf16 checkpoint is cast to fp16 for evaluation after a sanity check (no NaN or inf; greedy agreement with bf16 on 200 prompts is reported). Training rollouts use the training framework's own engine and are never evaluated. The G2 harness model (Qwen3-4B-Instruct-2507) runs in bf16: it is in no evaluated comparison. | The dev pools are fp16; mixing precisions would put a stack difference inside the comparison. |
+| D12 | Generation stack | Every generation that is evaluated (candidate pools, readers, solver-GRPO samples, the contamination probe) uses vLLM 0.33.0 in fp16 on the RTX PRO 6000, as the dev pools did. Training is bf16. A bf16 checkpoint is cast to fp16 for evaluation after a sanity check (no NaN or inf; greedy agreement with bf16 on 200 prompts is reported). (R17: the trained weights are the fp32 master weights; the stored and evaluated copy is cast once from them to fp16, with no bf16 copy, and the same sanity check applies.) Training rollouts use the training framework's own engine and are never evaluated. The G2 harness model (Qwen3-4B-Instruct-2507) runs in bf16: it is in no evaluated comparison. | The dev pools are fp16; mixing precisions would put a stack difference inside the comparison. |
 | D13 | Contamination probe (revised, R1) | The probe runs **after the Stage 2 freeze**, in the Stage 3 evaluation window and before the frozen analysis, on the primary and secondary problem texts. Its protocol is frozen at Stage 2 and implemented in `src/reader_audit/contamination.py`: prefix = the first 60% of the statement's tokens (floor, the model's own tokenizer, question text alone, no template); raw continuation, greedy, at most ceil(1.2 × remainder tokens) + 16 new tokens; a problem is **memorised** by a model if the completion, whitespace removed, starts with the remainder, whitespace removed. Two models are probed and **used separately**: the *studied* model Qwen3-1.7B (source of the candidates, the reader's initialisation and the solver baselines) gives the **primary flag**; Qwen3-1.7B-Base is reported beside it as pre-training exposure; "memorised by either" is a sensitivity split. H2's confirmatory test uses all primary problems; as secondary reports the same H2 estimate is given on the problems the primary flag does not mark, and under the "either" flag. No problem is removed because of the probe. Before the freeze only a rehearsal on dev and the harness set is allowed. | A model-based probe on a sealed set is a computation on that set, which section 2 forbids before the freeze; nothing before the freeze depends on it (it only splits a secondary H2 report). The studied model is the one whose behaviour the claims are about; the base model measures where exposure came from. |
 | D14 | Candidate handling (revised, R2) | Candidates are never filtered by outcome. **Two kinds of truncation are kept apart.** *Generation-truncated*: the candidate hit `max_tokens` = 2,048 (7.8% of dev candidates). It has no final answer unless a complete box came earlier, counts as wrong in the vote, is shown as generated, and appears as "(no final answer)" in answer-only. *Prompt-truncated*: a candidate longer than the cap of 1,536 tokens (13.6% of dev candidates: the 7.8% above plus 5.8% that finished within the limit) is cut **in the middle** for display. Its last 256 tokens are kept, so a finished candidate keeps its conclusion and final answer; a marker line follows the first part; the first part takes what is left, so the displayed text, **marker included, is at most 1,536 tokens** (about 1,270 tokens of the start; the marker is 10 Qwen3 tokens). Every plan row records, per prompt, how many shown candidates were generation-truncated, prompt-clipped and answer-hidden (the shown text no longer yields the candidate's graded answer); these counts are reported by arm and stratum. `Confidence: N` lines are removed from shown text, as the audit did for `full_solution`. Candidate order is a seeded shuffle. K = 8 prompts reach about 13.1k tokens, so `max_model_len` = 16,384 (section 7). | 2608.18379 cut candidates at their first answer; this study shows them whole, and cutting the end would hide the final answer the reader is meant to weigh. Implemented in `controls.middle_clipper` and `arms.py`. |
 | D15 | Candidate sets (revised, R9) | K candidates drawn without replacement from the problem's pool by a seeded shuffle keyed on (problem, draw, K). Evaluation: 2 reader replicates per cell. **Draws per problem on the primary set: 4, 8 or 16, fixed at the freeze by the power rule of section 6.3** (provisionally 16, see O1); 4 draws on the secondary, robustness and post-release sets (replications, descriptive). Strata c0, c1, c2+ count the correct candidates (0, 1, 2 or more); the label is computed after the draw and never used to choose sets for evaluation. The one set-level rule that reads candidate correctness is the answer swap's population (D25), which is a rule on candidates, not on any outcome. | The review's power recalculation (section 6.3) shows that with 4 draws the stratum-wise hypotheses are badly underpowered under Holm. |
@@ -363,13 +363,15 @@ will stretch accordingly; the cut date of the factorial still binds.
 
 ## 9. Not yet decided
 
-**Frozen at Stage 2:** reader prompt wording (drafts in `prompts/reader_v0/`; the owner
-reads real samples first); GRPO hyperparameters and framework (starting values recorded in
-R15, to be confirmed by the pilot); the training decontamination
-rule; the train-set mix (AggLM's easy-set share to be checked); ESC settings; the exact
-factorial contrasts; the seed count (D7) and the number of draws (section 6.3), both from
-measurements; the SDs of section 6.3; the transfer-pass prompts for Llama-3.2-3B and
-Qwen2.5-Math-1.5B (plain prompt with a format gate).
+**Frozen at the training freeze (R17, 2026-11-16):** reader prompt wording (the directory
+`prompts/reader_v1/`, read and approved by the owner); GRPO framework, hyperparameters and the speed changes (R15, R16); the training
+decontamination rule and the train-set mix (R14, R17); the seed count (D7: 3, R16); the checkpoint storage.
+
+**To be fixed before any trained checkpoint is evaluated on a confirmatory set (the second freeze):** the
+analysis and contrast code; ESC settings; the exact factorial contrasts; the number of draws (section
+6.3) and the SDs of section 6.3 (with the trained reader's dev SD beside them); the contamination-probe
+protocol (D13); the transfer-pass prompts for Llama-3.2-3B and Qwen2.5-Math-1.5B (plain prompt with a
+format gate).
 
 **Open for the owner before the freeze.** The review's power recalculation (section 6.3)
 shows four things I did not change, because each would alter a design parameter, a margin
@@ -399,7 +401,9 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
   case; 1.54 points would give 70%, 2 points 93%. **Owner's decision 2026-11-15: keep
   1.5 points for now and revisit at the freeze with the pilot's SD.** (O3 and O4 are
   therefore deferred, not closed: the freeze must state them again with the trained
-  reader's measured SD.)
+  reader's measured SD.) **Restated at the training freeze (R17, 2026-11-16): values unchanged (margin 1 point,
+  planning effect 1.5 points); they are stated again, with the trained reader's dev SD, at the second
+  freeze before any confirmatory evaluation.**
 
 ## 10. Change log
 
@@ -477,6 +481,59 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R17, the Stage 2 training freeze, the run order and checkpoint storage (2026-11-16),
+    [delegated] except where the owner is named.** *Owner:* on 2026-11-16 the owner read all
+    three reader templates and a sample of the training pools and judged them fine; the
+    wording is unchanged and is now frozen as `prompts/reader_v1/` (the audit's
+    `MANIFEST.json`, combined sha256 `0bb74ee5…635da`, checked by a test). The owner also
+    approved starting the training. *Frozen now (the training freeze):* the prompts; the
+    recipe of R15 with the two exact changes of R16 (own-length scoring, skipping of
+    zero-advantage rows) and fp32 master weights; the training set and its decontamination
+    (R14); the pool model and settings; the seed count (D7, 3, R16); the files listed in
+    `configs/training_freeze.json` with their hashes. `scripts/20_train_grpo.py` verifies
+    them at start and refuses to run if one changed; each run records its commit, library
+    versions and GPU in `runs.jsonl`. The freeze commit carries the tag
+    `stage2-training-freeze`. The 50-step pilot (R16 addendum) and a further speed-up that
+    would skip the scoring pass of zero-advantage groups are not part of it. *Checked at
+    the freeze:* AggLM's easy-set share. The paper's wording is ambiguous (the mixture
+    adds "p% of easy examples" with p = 50%, while the caption of its Table 4 reads
+    "percentage of easy sets relative to hard examples"); I keep all hard sets and half of
+    the easy sets, the roadmap's reading. On the 400 pilot problems that is 2,134 hard and
+    1,375 easy rows (39% easy); the other reading would give about 1,067 easy rows (33%).
+    The DeepScaleR share (34% of the problems) is kept. *Training problems used:* the first
+    2,400 of the seeded order (the 400 of the pilot pools and 2,000 more); 300 steps of 64
+    prompts need 19,200 rows, about 21,000 are available (an estimate from the pilot
+    rate), the other 5,187 problems are unused. *Not frozen yet, and fixed before any
+    trained checkpoint is evaluated on a confirmatory set:* the analysis and contrast code,
+    the evaluation draws, the probe protocol (D13), ESC settings, the factorial contrasts
+    and the transfer prompts. The margin of H4a (1 point) and the planning effect of H1
+    (1.5 points) stay as the owner decided on 2026-11-15; the trained reader's SD, from
+    the dev evaluation of the selected seed-1 checkpoint, is stated beside them at that
+    second freeze, where the owner may revisit them (dev is not a confirmatory set).
+    *Run order:* reader seed 1; the health check below; the solver seed 1, matched on
+    cumulative rollout tokens to the reader seed 1; seeds 2 and 3 of both arms; the other
+    arms after the main ones. Seed 1 is a confirmatory run, not a pilot. *Health check*
+    (stop and ask the owner; none of these is a result): a non-finite loss or gradient
+    norm; a gradient norm above 10 times its median over steps 1–25 for three steps in a
+    row; the mean reward over any 25 steps after step 50 below half of its mean over steps
+    1–25; a mean completion length below 100 or above 1,500 tokens over 25 steps; more
+    than 25% of completions at the 2,048 cap over 25 steps; or a mean step time above 300 s
+    (1.25 times the pilot's) over 25 steps. If the recipe must change after seed 1 has run,
+    that run is reported as a pilot and a dated deviation is logged. *Evaluation:* no
+    trained checkpoint is evaluated on a confirmatory set until all planned runs are
+    trained and the second freeze is taken; the dev evaluation of steps 100, 200 and 300
+    (the checkpoint rule) is the only evaluation before that. *Storage (amends D12):* a
+    milestone is stored once, cast from the fp32 master weights to fp16 (no bf16 copy),
+    3.4 GB, with a check that every value is finite, and this is the model that is
+    evaluated; D12's sanity check (no NaN or inf, greedy agreement with the training
+    engine's bf16 on 200 prompts) stays. On a real Qwen3-1.7B checkpoint the conversion
+    gave 3.44 GB, 310 tensors, a largest weight of 153, no non-finite value, the same
+    top-1 token and a largest logit difference of 0.04 against fp32. The reader keeps
+    steps 100, 200 and 300, the solver step 300; the 20 GB `latest` is removed when a run
+    completes; the step logs go to the hub with every checkpoint, and a run resumes from
+    the hub on a new machine. The estimate for three seeds of both arms is about 60 GB
+    (3 × 10 GB of reader milestones, 3 × 3.4 GB of solver weights, one `latest` of 20 GB
+    at a time), against the 250 GB of the earlier plan.
   - **R16, the 20-step GRPO pilot and its cost (2026-11-16), [delegated].** Reader arm,
     the 400 pilot problems, recipe of R15, on one RTX PRO 6000 (molab). *Speed:* the first
     attempt took more than 30 minutes for one step, because TRL pads every micro-batch of

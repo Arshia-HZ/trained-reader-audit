@@ -1,6 +1,6 @@
 """Reader prompts: templates, hashing and the pure builders (PREREG D14, D16).
 
-Templates live in ``prompts/reader_v0/`` (drafts until the Stage 2 freeze) and are
+Templates live in ``prompts/reader_v1/`` (frozen at the Stage 2 freeze, R17) and are
 hashed byte for byte with line endings normalised, as the audit's are. Every control
 that shows candidate solutions renders through the same template as the reader, so the
 wording is identical by construction.
@@ -17,7 +17,7 @@ from channel_audit.channels import NO_ANSWER, render, strip_confidence
 
 from reader_audit.controls import Truncate, cap_tokens
 
-PROMPT_VERSION = "reader_v0"
+PROMPT_VERSION = "reader_v1"
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts" / PROMPT_VERSION
 
 EMPTY_SLOT = "(no solution)"
