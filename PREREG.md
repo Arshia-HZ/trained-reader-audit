@@ -481,6 +481,43 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R18, reader seed 1 trained: health check, cost and what is not yet known
+    (2026-11-18), [delegated] except where the owner is named.** *What ran:* the reader arm,
+    seed 20261115, the recipe of R15, steps 1–300 on the frozen code (tag
+    `stage2-training-freeze`, manifest `8842b64b…ea05`), in three molab sessions (steps
+    1–50, 51–200, 201–300). The owner paused the run twice; each restart loaded the
+    resumable state from the hub (steps 50 and 200), refused a different row hash and found
+    the same one; steps 51–55 of the first session were lost and run again. The hub's
+    step-25 and step-200 states matched the local checkpoints by file size and by hash of
+    the model, trainer state, scheduler and random-number state. *Kept on the hub:* the
+    milestones of steps 100, 200 and 300 (fp16, 3.44 GB each, the finiteness check
+    passed), the step, batch, run, start and save logs, and `saves_complete.jsonl` (the
+    hub copy of `saves.jsonl` lacks the lines of steps 50, 200 and 300, which are written
+    after the log upload; the lines of steps 50 and 200 are taken from the session record
+    and marked `recovered`). The two resumable-state repos were deleted by the run itself
+    once the step-300 milestone was on the hub; the main repo holds 10.3 GB.
+    *Health check (R17):* one trigger fired, a mean step time above 300 s (steps 244–268,
+    and it held in the last two blocks: 311 s and 302 s). The owner was asked and on
+    2026-11-18 chose to continue to step 300. The cause is longer completions, not the
+    hardware: the mean length rose from 729 tokens (steps 1–25) to 969 (276–300), the share
+    at the 2,048 cap from 1.4% to 8.5%, generation time from 163 s to 215 s of a step; the
+    GPU ran at full use, 2,407 MHz and 61 °C, and the share of skipped zero-advantage rows
+    stayed at 0.74–0.79. No other trigger fired: no non-finite value, mean gradient norm
+    0.10–0.12 in every block, mean reward 0.47–0.53 in every block (never below half of the
+    first block's 0.49), length inside 100–1,500, the cap share well under 25%, every
+    checkpoint on the hub, one row hash. *Cost (replaces the R16 estimate of 20.26 GPU-h):*
+    steps 22.59 h, saves and uploads 0.30 h, start-ups 0.13 h, 23.03 GPU-h in all (mean
+    step 271 s against the pilot's 238 s), plus about 0.33 h for the redone steps. The D7
+    rule (20 hours or less gives five seeds) already gave three, so nothing changes in the
+    design; three reader seeds cost about 70 GPU-h. The solver's 10.45 h estimate (122 s a
+    step) may also grow if its completions lengthen, and is to be measured again.
+    *Not known yet:* the training reward is flat at about 0.5 over all 300 steps, but each
+    step has new problems of different difficulty, so it is not an evaluation, and
+    nothing is concluded from it; whether the reader gained anything is for the dev
+    evaluation of steps 100, 200 and 300 (the checkpoint rule), which has not been run. If
+    it shows no gain over the untrained reader, that is a result for this recipe at this
+    scale, to be reported as it is; the recipe (R15) is not changed without a dated
+    deviation, and seed 1 would then be reported as a pilot (R17).
   - **R17, the Stage 2 training freeze, the run order and checkpoint storage (2026-11-16),
     [delegated] except where the owner is named.** *Owner:* on 2026-11-16 the owner read all
     three reader templates and a sample of the training pools and judged them fine; the
