@@ -93,10 +93,8 @@ def _same(**over):
             "vocab_size": 151936,
             "dtype": "float16",
         },
-        "base_render": "[1, 2, 3]",
-        "milestone_render": "[1, 2, 3]",
-        "base_tokenizer_sha": "abc",
-        "milestone_tokenizer_sha": "abc",
+        "base_ids_digest": cr.ids_digest([[1, 2, 3], [4]]),
+        "milestone_ids_digest": cr.ids_digest([[1, 2, 3], [4]]),
     }
     base.update(over)
     return base
@@ -106,6 +104,39 @@ def test_an_identical_setup_has_no_problems():
     assert cr.identity_problems(**_same()) == []
 
 
+def test_the_library_version_that_wrote_a_generation_config_is_not_a_setting():
+    base = {"top_p": 0.95, "top_k": 20, "transformers_version": "4.51.0"}
+    ms = {"top_p": 0.95, "top_k": 20, "transformers_version": "5.20.2"}
+    assert (
+        cr.identity_problems(
+            **_same(base_generation_config=base, milestone_generation_config=ms)
+        )
+        == []
+    )
+
+
+def test_a_digest_of_token_ids_tells_one_changed_token_apart():
+    a = cr.ids_digest([[1, 2, 3], [4]])
+    assert a == cr.ids_digest([[1, 2, 3], [4]])
+    assert a != cr.ids_digest([[1, 2, 4], [4]])
+    assert a != cr.ids_digest([[1, 2, 3, 4]])  # the split between prompts counts
+
+
+def test_the_milestone_folder_reads_the_base_tokenizer_and_template(tmp_path):
+    folder, base = tmp_path / "ms", tmp_path / "base"
+    folder.mkdir()
+    base.mkdir()
+    for name in cr.BASE_TOKENIZER_FILES:
+        (folder / name).write_text("milestone")
+        (base / name).write_text("base")
+    (folder / "chat_template.jinja").write_text("template")
+    (folder / "model.safetensors").write_bytes(b"weights")
+    cr.use_base_tokenizer(folder, {n: base / n for n in cr.BASE_TOKENIZER_FILES})
+    assert all((folder / n).read_text() == "base" for n in cr.BASE_TOKENIZER_FILES)
+    assert not (folder / "chat_template.jinja").exists()
+    assert (folder / "model.safetensors").read_bytes() == b"weights"
+
+
 @pytest.mark.parametrize(
     "change, word",
     [
@@ -113,8 +144,10 @@ def test_an_identical_setup_has_no_problems():
             {"milestone_generation_config": {"top_p": 0.8, "top_k": 20}},
             "generation_config",
         ),
-        ({"milestone_render": "[1, 2, 4]"}, "chat template"),
-        ({"milestone_tokenizer_sha": "abd"}, "tokenizer"),
+        (
+            {"milestone_ids_digest": cr.ids_digest([[1, 2, 4], [4]])},
+            "tokenizer encodes",
+        ),
         (
             {
                 "milestone_config": {

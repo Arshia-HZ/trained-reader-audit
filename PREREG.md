@@ -517,6 +517,18 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     to R17's storage plan), so the check can be run for it. If step 100 or 200 is
     selected, the check is reported as not available for it. Every evaluated generation
     still comes from the stored fp16 milestone in vLLM fp16, the stack of D12.
+    *Amendment (2026-11-18, the same day, before any generation and any score):* the
+    first start stopped at the identity check, as it should. The milestone's
+    `generation_config.json` differs from the base's only in `transformers_version`
+    (4.51.0 against 5.20.2). Its `tokenizer.json`, written by transformers 5.20.2, differs
+    only in serialisation flags (`trim_offsets` of the byte-level pre-tokenizer and three
+    flags of the decoder); the split pattern, vocabulary, merges, added tokens and
+    normaliser are equal, and 832 real dev prompts (3.68 million tokens) and two edge
+    texts encode to the same ids under both. So: the version stamp is no longer compared;
+    the tokenizer is compared by the token ids of the 208 dev prompts and not by the hash
+    of its file, and a difference still stops the run; and the evaluated folder reads the
+    base model's own tokenizer files and chat template (the revision R13 used), so that
+    encoding and decoding are the same code as for the untrained reader.
   - **R18, reader seed 1 trained: health check, cost and what is not yet known
     (2026-11-18), [delegated] except where the owner is named.** *What ran:* the reader arm,
     seed 20261115, the recipe of R15, steps 1–300 on the frozen code (tag

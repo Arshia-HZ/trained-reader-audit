@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import shutil
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -31,9 +32,8 @@ MILESTONES: tuple[int, ...] = (100, 200, 300)
 LEVEL, K, DRAWS, REPLICATES = 5, 8, 16, 2  # R13's design
 TEMPERATURE = 0.7  # R13's, not the training 1.0
 SELECTION_ARM, FREE_ARM = "reader_full", "candidate_free"
-UNTRAINED_H1A = (
-    -0.03218233009773353
-)  # docs/dev_reader.json, 16 draws, for reference only
+# docs/dev_reader.json, 16 draws, for reference only
+UNTRAINED_H1A = -0.03218233009773353
 REQUIRED_FILES: tuple[str, ...] = (
     "model.safetensors",
     "config.json",
@@ -41,6 +41,12 @@ REQUIRED_FILES: tuple[str, ...] = (
     "tokenizer.json",
     "tokenizer_config.json",
     "chat_template.jinja",
+)
+BASE_TOKENIZER_FILES: tuple[str, ...] = (
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json",
+    "merges.txt",
 )
 CONFIG_KEYS = ("architectures", "hidden_size", "num_hidden_layers", "vocab_size")
 
@@ -84,12 +90,29 @@ def missing_files(folder: str | Path) -> list[str]:
     return [n for n in REQUIRED_FILES if not (Path(folder) / n).is_file()]
 
 
-def file_sha256(path: str | Path) -> str:
+def ids_digest(prompts_ids: Sequence[Sequence[int]]) -> str:
+    """One hash of the token ids of many rendered prompts."""
     h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 22), b""):
-            h.update(chunk)
+    for ids in prompts_ids:
+        h.update(json.dumps(list(ids)).encode())
     return h.hexdigest()
+
+
+def use_base_tokenizer(
+    folder: str | Path, base_files: Mapping[str, str | Path]
+) -> None:
+    """Make a milestone folder read its tokenizer and chat template from the base model.
+
+    Weights come from the milestone and the tokenizer files from the base revision R13
+    used, so encoding and decoding are the same code as for the untrained reader. The
+    milestone's own tokenizer.json was written by a newer transformers and differs from
+    the base's in serialisation flags; the base's chat template lives in
+    tokenizer_config.json, so the separate template file is removed.
+    """
+    folder = Path(folder)
+    for name in BASE_TOKENIZER_FILES:
+        shutil.copyfile(base_files[name], folder / name)
+    (folder / "chat_template.jinja").unlink(missing_ok=True)
 
 
 def identity_problems(
@@ -98,19 +121,22 @@ def identity_problems(
     milestone_generation_config: Mapping,
     base_config: Mapping,
     milestone_config: Mapping,
-    base_render: str,
-    milestone_render: str,
-    base_tokenizer_sha: str,
-    milestone_tokenizer_sha: str,
+    base_ids_digest: str,
+    milestone_ids_digest: str,
 ) -> list[str]:
-    """What differs between the base model's set-up and a milestone's, but weights."""
+    """What differs between the base model's set-up and a milestone's, but weights.
+
+    The library version that wrote a file is not a setting and is left out. The
+    milestone's own tokenizer must encode real dev prompts to the base's token ids.
+    """
     out = []
-    if dict(base_generation_config) != dict(milestone_generation_config):
+    drop = {"transformers_version"}
+    if {k: v for k, v in base_generation_config.items() if k not in drop} != {
+        k: v for k, v in milestone_generation_config.items() if k not in drop
+    }:
         out.append("generation_config.json differs from the base model's")
-    if base_render != milestone_render:
-        out.append("the chat template renders a dev prompt differently")
-    if base_tokenizer_sha != milestone_tokenizer_sha:
-        out.append("tokenizer.json differs from the base model's")
+    if base_ids_digest != milestone_ids_digest:
+        out.append("the milestone's tokenizer encodes dev prompts differently")
     for key in CONFIG_KEYS:
         if base_config.get(key) != milestone_config.get(key):
             out.append(f"config.json {key} differs from the base model's")

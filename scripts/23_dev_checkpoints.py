@@ -15,8 +15,9 @@ commit), on the 208 level-5 dev problems of R13: K = 8, 16 seeded sets per probl
 replicates per set, temperature 0.7, candidates cut at 1,536 tokens by the base model's
 tokenizer, the frozen ``reader_v1`` prompts (identical in text to the draft R13 used).
 Before any generation the milestone is checked against the base model for everything but
-the weights (generation config, chat template, tokenizer, weight format). The tokens are
-read from ``HF_TOKEN`` and never printed.
+the weights (generation config, weight format, the token ids of 208 dev prompts under
+the milestone's own tokenizer), and its folder then reads the base model's tokenizer and
+chat template, as R13 did. The tokens are read from ``HF_TOKEN`` and never printed.
 """
 
 from __future__ import annotations
@@ -115,23 +116,28 @@ def check_identity(base, folder: Path, pools: dict, cfg) -> list[str]:
         return Path(hf_hub_download(base.model_id, name, revision=base.revision))
 
     jl = lambda p: json.loads(Path(p).read_text("utf-8"))  # noqa: E731
-    subset = {pid: pools[pid] for pid in sorted(pools)[:1]}
-    first = plan_reader_run(
-        subset, cfg, arms=["reader_full"], ks=(cr.K,), n_draws=1, replicates=1
-    ).planned[0]
+    plan = plan_reader_run(
+        pools, cfg, arms=["reader_full"], ks=(cr.K,), n_draws=1, replicates=1
+    )
     kwargs = base.chat_template_kwargs
     base_tok = AutoTokenizer.from_pretrained(base.model_id, revision=base.revision)
     ms_tok = AutoTokenizer.from_pretrained(str(folder))
-    return cr.identity_problems(
+    digest = lambda tok: cr.ids_digest(  # noqa: E731
+        [render_prompt_ids(tok, p.messages, kwargs) for p in plan.planned]
+    )
+    problems = cr.identity_problems(
         base_generation_config=jl(fetch("generation_config.json")),
         milestone_generation_config=jl(folder / "generation_config.json"),
         base_config=jl(fetch("config.json")),
         milestone_config=jl(folder / "config.json"),
-        base_render=str(render_prompt_ids(base_tok, first.messages, kwargs)),
-        milestone_render=str(render_prompt_ids(ms_tok, first.messages, kwargs)),
-        base_tokenizer_sha=cr.file_sha256(fetch("tokenizer.json")),
-        milestone_tokenizer_sha=cr.file_sha256(folder / "tokenizer.json"),
+        base_ids_digest=digest(base_tok),
+        milestone_ids_digest=digest(ms_tok),
     )
+    if not problems:  # from here on the folder reads the base tokenizer, as R13 did
+        cr.use_base_tokenizer(
+            folder, {name: fetch(name) for name in cr.BASE_TOKENIZER_FILES}
+        )
+    return problems
 
 
 def cmd_run(args) -> int:
