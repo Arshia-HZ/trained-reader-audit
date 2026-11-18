@@ -481,6 +481,42 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R19, the dev evaluation of the reader milestones, and a deviation from D12
+    (2026-11-18), [delegated]; written before any milestone was scored.** *Set-up:* the
+    208 level-5 dev problems of R13, K = 8, 16 seeded sets per problem, 2 replicates,
+    temperature 0.7 (R13's, not the training 1.0), candidates cut at 1,536 tokens with
+    the base model's tokenizer, non-thinking template, 2,048 new tokens, window 16,384,
+    vLLM 0.33.0 in fp16, the fp16 milestone read from a pinned commit of the checkpoint
+    repo; 6,656 `reader_full` generations per milestone. The prompts are the frozen
+    `reader_v1`, which are byte for byte the draft R13 used (checked against commit
+    `fda927d`), so R13's untrained −3.2 points is a fair reference. Only the weights
+    differ from R13, and `checkpoint_rule.identity_problems` stops the run on any other
+    difference: the generation config, the token ids of a real dev prompt under each
+    chat template, the hash of `tokenizer.json`, the main config keys, the weight dtype.
+    *Decision quantity (D17, unchanged):* H1a at 16 draws by the same function as R13
+    (`summarise` of `13_dev_reader_analysis.py`, loaded from that script): the reader's
+    accuracy minus self-consistency at the same generated tokens, averaged over the 208
+    problems. Longer trained reads raise the matched count k\* (about 9 to 10 against
+    8.75), which is right under the generated-only rule; a problem whose k\* exceeds the
+    18 samples of its pool is not estimable, and then nothing is selected. *Ties:* "ties
+    to the later step" is read at face value, exact equality of the computed gains, no
+    tolerance (a tolerance would be a new rule that favours later steps). *Completeness:*
+    nothing is selected unless all three milestones have all 208 problems and 6,656
+    generations. *Arms:* `reader_full` for the three milestones, which decides;
+    `candidate_free` for the selected one only, for the H2 SD the second freeze states.
+    Dev only, no confirmatory data. Code: `checkpoint_rule.py`,
+    `scripts/23_dev_checkpoints.py`, `tests/test_checkpoint_rule.py`. *Deviation from D12
+    (it amends R17, which said the same sanity check applies):* the agreement check of
+    D12 (greedy agreement with the training engine's bf16 on 200 prompts) needs weights
+    that are not fp16, and the plan of R17 kept only the fp16 milestones and deleted the
+    resumable states, which held the only fp32 weights. So for steps 100 and 200 the check
+    cannot be run; what exists for them is the finiteness check at the cast (passed) and,
+    on the pilot checkpoint, the fp16 against fp32 comparison of R17 (same top-1 token,
+    largest logit difference 0.04). For step 300 the fp32 weights were copied to the
+    checkpoint repo before they were lost (`reader_s1/master_0300/`, 6.88 GB, an addition
+    to R17's storage plan), so the check can be run for it. If step 100 or 200 is
+    selected, the check is reported as not available for it. Every evaluated generation
+    still comes from the stored fp16 milestone in vLLM fp16, the stack of D12.
   - **R18, reader seed 1 trained: health check, cost and what is not yet known
     (2026-11-18), [delegated] except where the owner is named.** *What ran:* the reader arm,
     seed 20261115, the recipe of R15, steps 1–300 on the frozen code (tag

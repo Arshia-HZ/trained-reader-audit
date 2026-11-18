@@ -1,0 +1,198 @@
+"""The checkpoint rule (PREREG D17) and the set-up of its dev evaluation (R19).
+
+The rule is: the best of the milestones 100, 200 and 300 by the dev gain over matched
+self-consistency (H1a of ``13_dev_reader_analysis.py``, the generated-only rule), an
+exact tie going to the later step. ``select_checkpoint`` is the whole rule: no
+tolerance, no smoothing, no other quantity, and a milestone that is missing or not
+finite stops it.
+
+The evaluation differs from the untrained reader's dev run (R13) in the weights only.
+``identity_problems`` lists everything that could differ besides them: the sampling
+defaults, the chat template, the tokenizer and the weight format.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+from collections import defaultdict
+from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
+
+from channel_audit.models import ModelConfig
+
+from reader_audit import reader_eval as ev
+from reader_audit.dev_job import DONE
+from reader_audit.pools import ProblemPool
+from reader_audit.subsets import group_answers, sc_curve
+
+MILESTONES: tuple[int, ...] = (100, 200, 300)
+LEVEL, K, DRAWS, REPLICATES = 5, 8, 16, 2  # R13's design
+TEMPERATURE = 0.7  # R13's, not the training 1.0
+SELECTION_ARM, FREE_ARM = "reader_full", "candidate_free"
+UNTRAINED_H1A = (
+    -0.03218233009773353
+)  # docs/dev_reader.json, 16 draws, for reference only
+REQUIRED_FILES: tuple[str, ...] = (
+    "model.safetensors",
+    "config.json",
+    "generation_config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "chat_template.jinja",
+)
+CONFIG_KEYS = ("architectures", "hidden_size", "num_hidden_layers", "vocab_size")
+
+
+def select_checkpoint(gains: Mapping[int, float]) -> int:
+    """The step with the highest gain; an exact tie goes to the later step."""
+    if set(gains) != set(MILESTONES):
+        raise ValueError(f"the rule needs exactly the milestones {MILESTONES}")
+    bad = [s for s, g in gains.items() if not math.isfinite(g)]
+    if bad:
+        raise ValueError(f"gain not finite at steps {sorted(bad)}")
+    best = MILESTONES[0]
+    for step in MILESTONES[1:]:
+        if gains[step] >= gains[best]:
+            best = step
+    return best
+
+
+def milestone_folder(root: str | Path, run: str, step: int) -> Path:
+    """Where a milestone lives on a machine; the step is in the path, so the stored
+    generations' keys (which carry the model id) never mix two milestones."""
+    return Path(root) / run / f"step_{step:04d}"
+
+
+def milestone_model_config(
+    base: ModelConfig, folder: str | Path, revision: str
+) -> ModelConfig:
+    """The reader's model config with the weights of a local milestone.
+
+    The audit's Qwen3 check keys on 'qwen3' in the model id and a local path has none,
+    so the non-thinking setting is asserted here.
+    """
+    if base.chat_template_kwargs.get("enable_thinking") is not False:
+        raise ValueError("a Qwen3 reader must run with enable_thinking: false")
+    data = base.model_dump()
+    data.update(model_id=Path(folder).as_posix(), revision=revision)
+    return ModelConfig(**data)
+
+
+def missing_files(folder: str | Path) -> list[str]:
+    return [n for n in REQUIRED_FILES if not (Path(folder) / n).is_file()]
+
+
+def file_sha256(path: str | Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 22), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def identity_problems(
+    *,
+    base_generation_config: Mapping,
+    milestone_generation_config: Mapping,
+    base_config: Mapping,
+    milestone_config: Mapping,
+    base_render: str,
+    milestone_render: str,
+    base_tokenizer_sha: str,
+    milestone_tokenizer_sha: str,
+) -> list[str]:
+    """What differs between the base model's set-up and a milestone's, but weights."""
+    out = []
+    if dict(base_generation_config) != dict(milestone_generation_config):
+        out.append("generation_config.json differs from the base model's")
+    if base_render != milestone_render:
+        out.append("the chat template renders a dev prompt differently")
+    if base_tokenizer_sha != milestone_tokenizer_sha:
+        out.append("tokenizer.json differs from the base model's")
+    for key in CONFIG_KEYS:
+        if base_config.get(key) != milestone_config.get(key):
+            out.append(f"config.json {key} differs from the base model's")
+    dtype = milestone_config.get("dtype", milestone_config.get("torch_dtype"))
+    if dtype != "float16":
+        out.append(f"config.json dtype is {dtype!r}, not float16")
+    return out
+
+
+def _curves(pools: Mapping[str, ProblemPool]) -> dict:
+    return {
+        pid: sc_curve(
+            group_answers(
+                [c.answer for c in pool.candidates],
+                [c.correct for c in pool.candidates],
+            )
+        )
+        for pid, pool in pools.items()
+    }
+
+
+def finished_shards(root: str | Path) -> list[Path]:
+    return [s for s in sorted(Path(root).glob("shard_*")) if (s / DONE).is_file()]
+
+
+def load_step_outcomes(roots: Sequence[str | Path]) -> list[ev.Outcome]:
+    outcomes: list[ev.Outcome] = []
+    for root in roots:
+        for shard in finished_shards(root):
+            outcomes += ev.load_outcomes(shard)
+    return outcomes
+
+
+def summarise_step(
+    roots: Sequence[str | Path],
+    pools: Mapping[str, ProblemPool],
+    summarise: Callable,
+    *,
+    draws: int = DRAWS,
+    k: int = K,
+) -> dict:
+    """The dev analysis of one milestone, by the same function as R13's."""
+    outcomes = load_step_outcomes(roots)
+    done = {o.problem_id for o in outcomes}
+    use = {pid: p for pid, p in pools.items() if pid in done}
+    out, _ = summarise(outcomes, use, _curves(use), draws, k=k)
+    out["n_outcomes"] = len(outcomes)
+    by_arm: dict[str, int] = defaultdict(int)
+    for o in outcomes:
+        by_arm[o.arm] += 1
+    out["outcomes_by_arm"] = dict(by_arm)
+    return out
+
+
+def rule_report(
+    per_step: Mapping[int, dict], n_problems: int, *, arm_generations: int
+) -> dict:
+    """Select by the rule if every milestone is complete; say what is missing if not."""
+    gains = {s: per_step[s]["H1a"]["mean"] for s in per_step}
+    missing = []
+    for step, r in sorted(per_step.items()):
+        if r["problems"] != n_problems:
+            missing.append(f"step {step}: {r['problems']} of {n_problems} problems")
+        if r["H1a"]["not_estimable"]:
+            missing.append(f"step {step}: {r['H1a']['not_estimable']} not estimable")
+        if r["outcomes_by_arm"].get(SELECTION_ARM, 0) != arm_generations:
+            missing.append(
+                f"step {step}: {r['outcomes_by_arm'].get(SELECTION_ARM, 0)} of "
+                f"{arm_generations} {SELECTION_ARM} generations"
+            )
+    complete = not missing and set(gains) == set(MILESTONES)
+    return {
+        "rule": "D17: best of steps 100, 200 and 300 by H1a gain over matched SC "
+        "(generated-only), an exact tie to the later step",
+        "gains": {str(s): gains[s] for s in sorted(gains)},
+        "untrained_reference": UNTRAINED_H1A,
+        "complete": complete,
+        "incomplete": missing,
+        "selected": select_checkpoint(gains) if complete else None,
+        "per_step": {str(s): per_step[s] for s in sorted(per_step)},
+    }
+
+
+def write_report(report: dict, path: str | Path) -> None:
+    Path(path).write_text(json.dumps(report, indent=2), encoding="utf-8")
