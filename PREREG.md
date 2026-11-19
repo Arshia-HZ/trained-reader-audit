@@ -481,6 +481,75 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R25, the result of E3, the thinking pilot (2026-11-19), [delegated].** Run once as
+    R24 set it: generation at commit `4b2bdc4`, analysis at `229e150`
+    (`scripts/27_thinking_frontier.py`). The run produced 832 fresh solves on 208 problems
+    and 251 reads on the 131 problems with at least one ESC (2, 8) escalated set. It took
+    1.55 h and 0.54 h on the RTX PRO 6000. Raw data is `think_pilot_qwen3-1.7b/` in the raw
+    dataset; the report is `docs/dev_thinking_frontier.md` and `.json`. Credit is in
+    percent and cost in pool samples; the generated rule comes first, with prompt-inclusive
+    in parentheses.
+    - *One fresh thinking solve.* It scores 83.4 credit. It generates 8,992 tokens on
+      average (median 6,644). Of the 832 solves, 14.8% exceed 16,384 tokens, 10 are cut
+      at 30,000, and 8 are unclosed. This costs 8.68 samples (7.39). At that cost it is
+      +20.2 [+14.6, +25.8] (+20.6 [+15.2, +26.5]) above the non-thinking envelope of SC and
+      ESC. For comparison, SC scores 61.0 at 8 samples and 64.8 at 18. The same
+      generations cut at lower caps give −33.7 at 4,096, −5.4 at 8,192 and +14.0 at 16,384
+      against that envelope. A cut generation counts as wrong, so these figures are lower
+      bounds for a model forced to answer at the cap; budget forcing was not run.
+    - *Headroom.* The thinking vote of 2 scores 84.1 at 17.4 samples, and the vote of 4
+      scores 88.4 at 34.7. Across problems, 69.7% have all 4 solves right and 6.2% have
+      none (pass@4 93.8).
+    - *The cascades, minus the full envelope (SC, ESC and the thinking points).*
+      - ESC (2, 2) then one thinking solve at 30,000: this is DART's policy. It scores
+        80.7 at 7.59 samples and escalates 60% of sets: +2.7 [+0.2, +5.0]
+        (+0.7 [−1.9, +3.1]). The envelope at that cost is the chord from SC at 1 sample
+        (1.00, 45.2) to one thinking solve at 30,000 (8.68, 83.4). That chord is a random
+        per-problem mixture of one non-thinking sample and one thinking solve. So +2.7 is
+        what the agreement gate adds over choosing at random which problems to think on.
+        Against always thinking, it saves 1.1 samples and gives up 2.7 points. It is the
+        best of 12 cells (6 cascades × 2 rules), is positive under the generated rule only,
+        and comes from the same dev problems that make the envelope.
+      - The other thinking cascades: m2 at 16,384 −0.4 (−2.2); m4 at 30,000 +0.3 (−2.9);
+        m4 at 16,384 −2.5 (−5.5); m8 at 30,000 −5.9 (−7.7); m8 at 16,384 −8.3 (−12.0).
+        Drawing more non-thinking samples before escalating lowers the result: those
+        samples cost tokens and do not settle the hard problems.
+      - The non-thinking reader cascade of R21 (f), ESC (2, 8) then a read: step 100
+        scores 61.7 at 5.18, −4.4 [−8.8, −0.2] (−21.6 [−26.9, −14.3]); untrained scores
+        −5.5 [−9.9, −1.3] (−22.7). It is still 1.4 points above ESC (2, 8) alone, the best
+        unmixed point at or below its cost. It falls below once thinking enters the
+        envelope. So R21 (f)'s +1.1 against the non-thinking frontier does not hold
+        against this envelope.
+      - ESC (2, 8) then the thinking read: 66.0 at 6.55, −6.8 [−12.4, −1.8]
+        (−17.7 [−22.6, −12.8]).
+    - *The thinking read minus the fresh thinking solve, on the 131 problems arm B covers.*
+      At the same 16,384 cap the difference is −11.6 [−18.1, −5.2]. Against the fresh
+      solve at 30,000 it is −21.6 [−28.1, −15.1]. Of the 251 reads, 9 stopped inside
+      thinking (end of sequence before `</think>`) and 2 hit the cap. Graded on any boxed
+      answer, 7 of those 9 are right, and the first contrast becomes −9.0 [−15.5, −2.7].
+      The read sees non-thinking candidates, which on these sets are weaker than a
+      thinking solve. So the result is that showing weaker candidates to a thinking solver
+      lowers its credit. Whether aggregating same-mode thinking candidates helps, as in
+      AggLM, was not tested.
+    - *Cost caveat.* Both rules count tokens, not latency. One thinking solve is a single
+      serial chain of about 9,000 tokens; the eight non-thinking samples are parallel
+      chains of about 1,000 each. At matched tokens, thinking is several times slower on
+      the wall clock. The measured GPU-seconds come from different runs and batch sizes,
+      so they are not a throughput comparison.
+    - *Reading.* On level-5 dev, thinking dominates the non-thinking regime that the reader
+      was trained in and the hypotheses are set in. At matched generated tokens the mode
+      switch is worth about 20 points. The largest non-thinking aggregator gain in R21 was
+      1.7 points. Thinking beating non-thinking is a known property of Qwen3's thinking
+      mode, not a finding of this study. What this study adds is the size of the effect
+      against SC and ESC at matched cost on this slice, and where the crossover lies.
+      The crossover is between about 6,700 and 8,400 generated tokens per problem (the
+      8,192 and 16,384 caps, with cut thinking counted wrong). Below it, the non-thinking
+      samples win. This agrees with NoThinking (arXiv 2504.09858) at low budgets. Within thinking mode, showing the non-thinking candidates lowers a solver's
+      credit. Gating thinking on two cheap samples (DART) sits at or slightly above the
+      envelope, under the generated rule only. Nothing preregistered changes: the
+      hypotheses stay in non-thinking mode, and the thesis must state that thinking
+      dominates their envelope. The next direction is the owner's decision; Stage 3 stays
+      paused (R20).
   - **R24, the settings of E3: the thinking pilot and the policies it is read by
     (2026-11-19), [delegated]; written before any generation.** The owner asked for it the
     same day. Exploratory, dev only, no Holm, used to choose no confirmatory parameter
