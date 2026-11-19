@@ -481,6 +481,24 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R23, the result of the E2 probe (2026-11-19), [delegated].** Run once as R22 set
+    it (commit `238e68a`): 24 problems, 48 escalated sets, 96 generations, 681 s on the
+    RTX PRO 6000; raw data `think_probe_qwen3-1.7b/` in the raw dataset. Credit on the 48
+    sets, with the extra cost over the 8 shown samples in pool samples (generated rule):
+    the vote of the 8, 37.2 (0); the non-thinking read, untrained 30.2 (0.68) and step 100
+    39.6 (0.69); ESC continued to 16 samples over the set's seeded order, 46.8 (6.4); the
+    thinking read of the 8 (untrained), 47.9 (4.3: 5,043 generated tokens, median 4,152,
+    2% cut by the cap, 6% without `</think>`); the thinking candidate-free solve
+    (untrained), 60.4 (8.6: 9,988 generated tokens, median 9,540, 17% cut by the 16,384
+    cap and so counted wrong). Paired on the 48 sets: both thinking arms right 17,
+    candidate-free only 12, read only 6, neither 13. *Reading:* descriptive, one
+    generation per arm and set, 24 problems, so each credit carries an interval of
+    roughly ±14 points; nothing is tested. On the sets where cheap samples disagree, a
+    fresh thinking solve looks like the best use of extra compute, ahead of more samples
+    and of any read; reading the disagreeing candidates in thinking mode does worse than
+    ignoring them, at about half the tokens. The cap binds for a sixth of the fresh
+    solves. A thinking solve on every problem (the baseline any cascade into thinking
+    must beat) was not run. Nothing preregistered changes.
   - **R22, the settings of E2: a thinking-mode probe on the escalation slice
     (2026-11-19), [delegated]; written before any generation.** The owner asked for it
     the same day. *Model:* the untrained Qwen3-1.7B at the revision of R13
