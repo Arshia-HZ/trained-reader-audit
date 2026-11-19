@@ -516,12 +516,16 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
         samples cost tokens and do not settle the hard problems.
       - The non-thinking reader cascade of R21 (f), ESC (2, 8) then a read: step 100
         scores 61.7 at 5.18, −4.4 [−8.8, −0.2] (−21.6 [−26.9, −14.3]); untrained scores
-        −5.5 [−9.9, −1.3] (−22.7). It is still 1.4 points above ESC (2, 8) alone, the best
-        unmixed point at or below its cost. It falls below once thinking enters the
-        envelope. So R21 (f)'s +1.1 against the non-thinking frontier does not hold
+        −5.5 [−9.9, −1.3] (−22.7). Under the generated rule it is still 1.4 points above
+        ESC (2, 8) alone, the best unmixed point at or below its cost. That does not hold
+        under the prompt-inclusive rule: there, one thinking solve at 16,384 costs less
+        (6.85 against 7.36) and scores 77.0. Under either rule it falls below once
+        thinking enters the envelope. So R21 (f)'s +1.1 against the non-thinking frontier does not hold
         against this envelope.
       - ESC (2, 8) then the thinking read: 66.0 at 6.55, −6.8 [−12.4, −1.8]
-        (−17.7 [−22.6, −12.8]).
+        (−17.7 [−22.6, −12.8]). Arm B read only the first two escalated sets of each
+        problem. The cascade applies their mean to every escalated set (about 5 to 6 of
+        the 16 per problem), so most of this credit is extrapolated.
     - *The thinking read minus the fresh thinking solve, on the 131 problems arm B covers.*
       At the same 16,384 cap the difference is −11.6 [−18.1, −5.2]. Against the fresh
       solve at 30,000 it is −21.6 [−28.1, −15.1]. Of the 251 reads, 9 stopped inside
@@ -538,8 +542,9 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
       so they are not a throughput comparison.
     - *Reading.* On level-5 dev, thinking dominates the non-thinking regime that the reader
       was trained in and the hypotheses are set in. At matched generated tokens the mode
-      switch is worth about 20 points. The largest non-thinking aggregator gain in R21 was
-      1.7 points. Thinking beating non-thinking is a known property of Qwen3's thinking
+      switch is worth about 20 points. By contrast, R21's largest matched-cost gain over a
+      baseline on all problems was 1.7 points (the reader cascade paired against ESC
+      alone). Thinking beating non-thinking is a known property of Qwen3's thinking
       mode, not a finding of this study. What this study adds is the size of the effect
       against SC and ESC at matched cost on this slice, and where the crossover lies.
       The crossover is between about 6,700 and 8,400 generated tokens per problem (the
