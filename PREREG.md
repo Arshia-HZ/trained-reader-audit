@@ -481,6 +481,38 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R24, the settings of E3: the thinking pilot and the policies it is read by
+    (2026-11-19), [delegated]; written before any generation.** The owner asked for it the
+    same day. Exploratory, dev only, no Holm, used to choose no confirmatory parameter
+    unless a later dated entry says so. *Model, prompts, sampling and grading* as in R22
+    (untrained Qwen3-1.7B, thinking on, `reader_v1`, temperature 0.6, top-p 0.95, top-k 20,
+    the answer after `</think>`, unclosed thinking wrong), with new seeds. *Arm A, the
+    fresh thinking solve:* `candidate_free` on all 208 level-5 dev problems, 4 samples
+    each (832 generations), at most 30,000 new tokens in the 32,768 window; a
+    generation's credit at any lower cap c is exact from its own token count (it is the
+    same generation if it ended within c, and wrong otherwise). *Arm B, the thinking
+    read:* `reader_full` on the first two sets of each problem that ESC (window 2, cap 8)
+    leaves without an agreeing pair, one generation each, at most 16,384 new tokens as in
+    R22. *Shards:* 4 of 52 problems, each uploaded to the raw dataset
+    (`think_pilot_qwen3-1.7b/`) as it finishes. *Policies, all computed from the pools,
+    the stored reads and arms A and B, none chosen by its result:* (1) the comparison
+    envelope: plain SC at k = 1 to 18 and the ESC settings of D22 (non-thinking); one
+    thinking solve at caps of 4,096, 8,192, 16,384 and 30,000 tokens; the thinking vote
+    of 2 and of 4 solves at the 30,000 cap; their pooled upper envelope across problems,
+    as in D22. (2) The cascades: ESC with window 2 and cap 2, 4 or 8 over each seeded
+    set's shown order; on agreement its plurality, otherwise one thinking solve (credit
+    and tokens averaged over the problem's 4 solves) at the 16,384 or the 30,000 cap; the
+    cap-2 version is DART's first stage. (3) For reference, the non-thinking cascades of
+    R21 (f) with the untrained and the step-100 readers, and ESC (2, 8) then the thinking
+    read on the sets arm B covers. (4) The contrast on the sets arm B covers: the
+    thinking read minus the mean fresh thinking solve of the same problem. *Read by:*
+    each cascade minus the envelope (1) at the same mean cost; the generated-only rule is
+    primary (thinking tokens counted), the prompt-inclusive rule second; bootstrap over
+    problems (2,000); measured GPU-seconds per arm, descriptive. *Scope of a claim:*
+    "think only on disagreement" is DART's (arXiv 2606.23181, EMNLP 2026 Findings) and
+    is not claimed as new; what is read here is how it stands against SC, ESC and
+    always-think at matched generated tokens for a 1.7B model, and whether showing the
+    disagreeing candidates helps a thinking solve or hurts it.
   - **R23, the result of the E2 probe (2026-11-19), [delegated].** Run once as R22 set
     it (commit `238e68a`): 24 problems, 48 escalated sets, 96 generations, 681 s on the
     RTX PRO 6000; raw data `think_probe_qwen3-1.7b/` in the raw dataset. Credit on the 48

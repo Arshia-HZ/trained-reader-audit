@@ -110,3 +110,32 @@ def test_plan_and_report_of_the_script_on_fake_generations(pools, tmp_path):
 def test_seeds_differ_by_arm_and_draw():
     seeds = {tp.seed_for("p", d, a, 0) for d in range(4) for a in ("x", "y")}
     assert len(seeds) == 8
+
+
+def test_pilot_plan_covers_every_problem_in_shards(pools):
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "26_thinking_pilot.py"
+    spec = importlib.util.spec_from_file_location("think_pilot_script", path)
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    script.K = 4
+    shards = script.plan(pools)
+    assert len(shards) == script.N_SHARDS
+    rows = [r for s in shards for r in s]
+    free = [r for r in rows if r["arm"] == "candidate_free"]
+    reads = [r for r in rows if r["arm"] == "reader_full"]
+    assert {r["problem_id"] for r in free} == set(pools)
+    assert len(free) == script.SOLVES * len(pools)
+    for pid in pools:
+        mine = [r["draw"] for r in reads if r["problem_id"] == pid]
+        assert (
+            mine == tp.escalated_draws(pools[pid], 4, script.DRAWS)[: script.READ_SETS]
+        )
+    # no problem is split across shards, and the pilot's seeds are not the probe's
+    owners = {}
+    for i, s in enumerate(shards):
+        for r in s:
+            assert owners.setdefault(r["problem_id"], i) == i
+    assert tp.seed_for("p", 0, "a", 0, script.SALT) != tp.seed_for("p", 0, "a", 0)

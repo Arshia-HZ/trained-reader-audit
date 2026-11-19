@@ -48,8 +48,10 @@ def pick_problems(ids: Sequence[str], n: int, salt: str = SALT) -> list[str]:
     return sorted(ids, key=key.__getitem__)[:n]
 
 
-def seed_for(problem_id: str, draw: int, arm: str, replicate: int) -> int:
-    digest = hashlib.sha256(f"{SALT}|{problem_id}|{draw}|{arm}|{replicate}".encode())
+def seed_for(
+    problem_id: str, draw: int, arm: str, replicate: int, salt: str = SALT
+) -> int:
+    digest = hashlib.sha256(f"{salt}|{problem_id}|{draw}|{arm}|{replicate}".encode())
     return int.from_bytes(digest.digest()[:4], "big")
 
 
