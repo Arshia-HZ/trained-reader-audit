@@ -511,7 +511,21 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     that reads only at a plurality of 3 or fewer is suggested by (d), but it was not in
     the logged curve; it is post hoc and is not computed here. Nothing preregistered
     changes. A confirmatory test of an allocation policy would need its own entry before
-    the second freeze, on data not used here.
+    the second freeze, on data not used here. *Checks (the same day, from the same shards,
+    after the result above):* (i) the pool's own single-sample accuracy, weighted like
+    the sets, is 45.2 over all sets (c0 8.7, c1 22.5, c2+ 60.5); the untrained
+    candidate-free solve is 47.6 (c1 18.2) and the step-100 one 50.6 (c1 28.3, c2+ 67.3).
+    So (a) stands: the trained model's fresh solve is about 5 points above the base
+    model's ordinary pass@1, not only rid of a template handicap. (ii) Charging the
+    cascade's ESC part by samples drawn instead of tokens gives the same mean cost (5.18
+    against 5.18), so (f) stands. Paired on the same sets, the cascade minus ESC (window
+    2, cap 8) over the same shown order, which differs only by reading instead of voting
+    on the 35% of sets without an agreeing pair, is +1.7 [+0.6, +2.9] points for step 100
+    at about 0.26 samples more (untrained +0.6 [−0.4, +1.6], step 200 +0.4, step 300
+    +1.0). (iii) The reads of steps 200 and 300 hit the 2,048-token cap in 22% and 21% of
+    generations (step 100 1.5%, untrained 1.0%); this explains most of their fall in (c)
+    and their lower H1a. The candidate-free solves hit the cap in 16% (untrained) and 22%
+    (step 100) of generations.
   - **R20, the dev result of the reader milestones and the D17 selection; the owner's pause
     of Stage 3; exploratory analyses logged before they are computed (2026-11-19),
     [delegated] except where the owner is named.** *Result* (dev, the set-up of R19,
