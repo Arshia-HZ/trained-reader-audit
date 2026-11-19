@@ -1,0 +1,155 @@
+{
+  "rule": "D17: best of steps 100, 200 and 300 by H1a gain over matched SC (generated-only), an exact tie to the later step",
+  "gains": {
+    "100": 0.004908304663584034,
+    "200": -0.017249990141046397,
+    "300": -0.01354390406559163
+  },
+  "untrained_reference": -0.03218233009773353,
+  "complete": true,
+  "incomplete": [],
+  "selected": 100,
+  "per_step": {
+    "100": {
+      "draws": 16,
+      "problems": 208,
+      "sets": {
+        "c2+": 2183,
+        "c0": 844,
+        "c1": 301
+      },
+      "reader_generated_tokens_mean": 729.7611177884615,
+      "k_star_mean": 8.740875802627606,
+      "H1a": {
+        "n": 208,
+        "not_estimable": 0,
+        "mean": 0.004908304663584034,
+        "sd": 0.1436786636547337
+      },
+      "H2_single_arm": {
+        "n": 0,
+        "coverage": 0.0,
+        "mean": NaN,
+        "sd": NaN
+      },
+      "H4a": {
+        "n": 154,
+        "coverage": 0.7403846153846154,
+        "mean": -0.025137952775939786,
+        "sd": 0.15993166654517965
+      },
+      "n_outcomes": 6656,
+      "outcomes_by_arm": {
+        "reader_full": 6656
+      }
+    },
+    "200": {
+      "draws": 16,
+      "problems": 208,
+      "sets": {
+        "c2+": 2183,
+        "c0": 844,
+        "c1": 301
+      },
+      "reader_generated_tokens_mean": 1238.611328125,
+      "k_star_mean": 9.277262906780427,
+      "H1a": {
+        "n": 208,
+        "not_estimable": 0,
+        "mean": -0.017249990141046397,
+        "sd": 0.18189374291106233
+      },
+      "H2_single_arm": {
+        "n": 0,
+        "coverage": 0.0,
+        "mean": NaN,
+        "sd": NaN
+      },
+      "H4a": {
+        "n": 154,
+        "coverage": 0.7403846153846154,
+        "mean": -0.04478532380318095,
+        "sd": 0.2211819368960505
+      },
+      "n_outcomes": 6656,
+      "outcomes_by_arm": {
+        "reader_full": 6656
+      }
+    },
+    "300": {
+      "draws": 16,
+      "problems": 208,
+      "sets": {
+        "c2+": 2183,
+        "c0": 844,
+        "c1": 301
+      },
+      "reader_generated_tokens_mean": 1266.463641826923,
+      "k_star_mean": 9.324461042223966,
+      "H1a": {
+        "n": 208,
+        "not_estimable": 0,
+        "mean": -0.01354390406559163,
+        "sd": 0.17819014523002663
+      },
+      "H2_single_arm": {
+        "n": 0,
+        "coverage": 0.0,
+        "mean": NaN,
+        "sd": NaN
+      },
+      "H4a": {
+        "n": 154,
+        "coverage": 0.7403846153846154,
+        "mean": -0.04294998381849031,
+        "sd": 0.21897152893116956
+      },
+      "n_outcomes": 6656,
+      "outcomes_by_arm": {
+        "reader_full": 6656
+      }
+    }
+  },
+  "settings": {
+    "level": 5,
+    "k": 8,
+    "draws": 16,
+    "replicates": 2,
+    "temperature": 0.7,
+    "prompt_version": "reader_v1"
+  },
+  "selected_with_candidate_free": {
+    "draws": 16,
+    "problems": 208,
+    "sets": {
+      "c2+": 2183,
+      "c0": 844,
+      "c1": 301
+    },
+    "reader_generated_tokens_mean": 729.7611177884615,
+    "k_star_mean": 8.740875802627606,
+    "H1a": {
+      "n": 208,
+      "not_estimable": 0,
+      "mean": 0.004908304663584034,
+      "sd": 0.1436786636547337
+    },
+    "H2_single_arm": {
+      "n": 64,
+      "coverage": 0.3076923076923077,
+      "mean": 0.0636011341089466,
+      "sd": 0.4028116331686225
+    },
+    "H4a": {
+      "n": 154,
+      "coverage": 0.7403846153846154,
+      "mean": -0.025137952775939786,
+      "sd": 0.15993166654517965
+    },
+    "n_outcomes": 13312,
+    "outcomes_by_arm": {
+      "reader_full": 6656,
+      "candidate_free": 6656
+    }
+  }
+}

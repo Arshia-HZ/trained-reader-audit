@@ -481,6 +481,54 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R20, the dev result of the reader milestones and the D17 selection; the owner's pause
+    of Stage 3; exploratory analyses logged before they are computed (2026-11-19),
+    [delegated] except where the owner is named.** *Result* (dev, the set-up of R19,
+    complete for all three milestones: 208 problems and 6,656 `reader_full` generations
+    each; `docs/dev_checkpoint_rule.json`; raw data `dev_trained_reader_s1_*` in the raw
+    dataset): the H1a gain over matched SC (generated-only) is +0.5 points at step 100 (SD
+    0.144 over problems), −1.7 at step 200 (0.182) and −1.4 at step 300 (0.178), against
+    −3.2 for the untrained reader (R13). **D17 selects step 100** (exact argmax, no tie).
+    The mean read is 730, 1,239 and 1,266 tokens (untrained 728), k\* 8.74, 9.28 and 9.32;
+    no problem is not estimable. At step 100: c2+ sets, reader minus the plain vote −2.5
+    points (SD 0.160, 154 problems; untrained −7.4); the `candidate_free` arm (6,656
+    generations) gives, on c1 sets, reader with candidates minus its candidate-free solve
+    +6.4 points (SD 0.403, 64 problems; untrained +14.5), so the dev estimate of H2 is
+    about −8 points against its planning magnitude of +10. The ESC frontier at the reader's
+    cost is 1.5 points above plain SC on level 5 (D22, `docs/dev_baselines.md`), so step 100
+    is about 1 point below it. *Reading:* dev only and descriptive; the best of three
+    steps is biased upward; no intervals here. Training moved the reader about 3.7 points,
+    mostly through less harm on c2+ sets, while its c1 advantage over its own fresh solve
+    shrank; whether by worse reading or by a better fresh solve is read from E1 (a) below.
+    With the planning effect of 1.5 points a supported H1a at the confirmatory stage looks
+    unlikely; nothing preregistered changes, and D26 frames that case. The D12 agreement
+    check is not available for step 100 (R19). *Owner's decision (2026-11-19):* Stage 3's
+    costly runs (reader seeds 2 and 3, the solver-GRPO seeds) are paused until the
+    analyses below are read; no hypothesis, margin or rule changes by the pause.
+    *Exploratory, logged before any of it is computed* (no Holm, dev only, used to choose
+    no confirmatory parameter unless a later dated entry says so). **E1**, no generation,
+    the stored dev shards of R13 and of steps 100, 200 and 300: (a) raw accuracy per arm
+    and stratum, with the plain vote of the same sets; (b) the reader minus the plain vote
+    of the same K = 8 sets over all sets (the quantity AggLM reports, at equal K); (c) the
+    share of reads whose answer is in the set's plurality, and the share equal to some
+    shown answer; (d) reader minus vote by the size of the plurality among the 8 shown
+    answers; (e) a dev estimate of H6: the unanimity gate (vote if all 8 answers agree,
+    otherwise read) against ESC at matched mean cost, under the prompt-inclusive rule (H6's
+    rule) and the generated-only rule, with ESC (windows 2, 4 and 8, caps 8 and 16) and SC
+    computed on the same 208 problems and pooled into the frontier of D22; plurality
+    thresholds of 5, 6 and 7 of 8 are reported as a curve and none is selected; (f) ESC
+    first, a read only on disagreement: ESC with window 2 or 4 and cap 8 runs over each
+    seeded set's shown order; if it stops early, its plurality at its cost; if it reaches 8
+    without an agreeing window, the stored read of that same set at the cost of the 8
+    samples plus the read; against the same frontier. Intervals by a bootstrap over
+    problems (2,000 resamples); a policy whose mean cost is outside the frontier's range is
+    reported as not estimable. Code: `allocation.py`, `scripts/24_dev_allocation.py`,
+    `tests/test_allocation.py`. **E2**, generation, after E1: a probe of the untrained
+    Qwen3-1.7B in thinking mode on about 20 level-5 dev problems, the candidate-free solve
+    first, then a read of the same non-thinking sets. Its settings (template, context
+    window, length cap, sampling, answer extraction after `</think>`) are logged in a dated
+    entry before it runs, with a model config of its own, so the non-thinking check of the
+    frozen arms stays as it is.
   - **R19, the dev evaluation of the reader milestones, and a deviation from D12
     (2026-11-18), [delegated]; written before any milestone was scored.** *Set-up:* the
     208 level-5 dev problems of R13, K = 8, 16 seeded sets per problem, 2 replicates,
