@@ -481,6 +481,31 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R22, the settings of E2: a thinking-mode probe on the escalation slice
+    (2026-11-19), [delegated]; written before any generation.** The owner asked for it
+    the same day. *Model:* the untrained Qwen3-1.7B at the revision of R13
+    (`70d244cc…`), thinking mode on (`enable_thinking=True` in the chat template), vLLM
+    0.33.0 in fp16, window 32,768, at most 16,384 new tokens. *Arms:* `candidate_free`
+    and `reader_full` with the frozen `reader_v1` prompts, the candidates cut at 1,536
+    tokens by the base tokenizer as in R13. *Sets:* the escalation slice of R21 (f), the
+    sets on which ESC (window 2, cap 8) over the shown order ends without an agreeing
+    pair. *Probe:* 24 level-5 dev problems that have such a set, chosen by a hash of the
+    problem id (salt `reader-audit/think-probe/v1`), the first two such draws of each, one
+    generation per arm and set (at most 96). *Sampling:* Qwen's stated settings for
+    thinking mode (temperature 0.6, top-p 0.95, top-k 20, min-p 0, no repetition
+    penalty), not the 0.7 of the non-thinking arms, because the model's card advises
+    against other settings in this mode; seeds hashed from problem, draw, arm and
+    replicate. *Grading:* the answer is taken from the text after `</think>` by the
+    audit's extractor and graded by `is_correct`; a generation without `</think>` (its
+    thinking cut by the cap) counts as wrong. *Cost:* generated tokens, thinking
+    included, in samples of the problem's pool, as in R21. *Reported, not tested:* mean
+    generated and thinking tokens, the share cut by the cap, credit per arm; and, on the
+    same sets, the vote, the stored non-thinking reads of the untrained and step-100
+    readers, and ESC continued to cap 16 over the rest of each set's seeded order (the
+    "more samples" option, from the pools, no generation). *Use:* only to decide whether
+    and how to size a pilot on the whole slice (about 1,165 sets). The code is a separate
+    path (`think_probe.py`, `scripts/25_thinking_probe.py`) with its own settings, so the
+    frozen non-thinking harness and its check stay unchanged.
   - **R21, the result of the exploratory analyses E1 (2026-11-19), [delegated].** Computed
     once, as logged in R20, from the stored dev shards (no generation); code at commit
     `6180f83`; `docs/dev_allocation.md` and `.json`. Descriptive, dev only, no Holm;
