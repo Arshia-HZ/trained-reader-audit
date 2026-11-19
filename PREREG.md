@@ -481,6 +481,37 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R21, the result of the exploratory analyses E1 (2026-11-19), [delegated].** Computed
+    once, as logged in R20, from the stored dev shards (no generation); code at commit
+    `6180f83`; `docs/dev_allocation.md` and `.json`. Descriptive, dev only, no Holm;
+    points are percentage points, intervals 95% bootstrap over the 208 problems. The
+    always-read rows reproduce R13 and R20 (−3.2 untrained, +0.5 step 100). (a) *Why the
+    c1 gap shrank:* at c1 the step-100 candidate-free solve rose from 18.2 to 28.3 while
+    the read rose from 32.7 to 34.7; over all sets the candidate-free solve rose from 47.6
+    to 50.6. Training the reader made the model a better solver of these problems on its
+    own; reading did not get worse. (b) *Equal K* (AggLM's quantity): reader minus the
+    plain vote of the same 8 candidates over all sets, untrained −2.4 [−4.4, −0.3], step
+    100 +1.3 [−0.6, +3.2]. (c) The step-100 read gives the plurality's answer in 81% of
+    reads (untrained 77%) and some shown answer in 92%; at steps 200 and 300 both fall
+    (about 70% and 76%), with the longer reads. (d) *By agreement*, step 100: reader minus
+    vote is −0.1 when all 8 agree, −1.4, −3.3, −4.6 and −5.2 at pluralities of 7 down to
+    4, and +6.6 [+3.2, +10.0] at a plurality of 3 or fewer (42% of sets; untrained +2.5
+    [−1.1, +6.0]). (e) *H6 on dev*, the unanimity gate minus the SC + ESC frontier under
+    the prompt-inclusive rule: step 100 −2.6 [−5.1, +0.1], untrained −6.0; under the
+    generated-only rule −1.2. The thresholds 5 to 7 lie in between. (f) *ESC first, a read
+    on disagreement:* with window 2 and cap 8, 35% of sets reach 8 samples without an
+    agreeing pair and are read, at a mean cost of 5.18 samples; minus the frontier, under
+    the generated-only rule, +1.1 [−0.2, +2.5] for step 100 (untrained −0.0, step 200
+    −0.4, step 300 +0.2), and under the prompt-inclusive rule −1.1 [−2.8, +0.7]; window 4
+    gives −0.5. *Reading:* the trained reader's skill is local. It beats the vote where
+    the candidates disagree and loses where they agree, so reading every set wastes it.
+    Spending the read only where cheap samples disagree is the one policy whose dev
+    estimate lies above the free frontier, under the generated-only rule only, with an
+    interval that includes 0, and as the best of 8 policies × 2 rules × 4 readers. A gate
+    that reads only at a plurality of 3 or fewer is suggested by (d), but it was not in
+    the logged curve; it is post hoc and is not computed here. Nothing preregistered
+    changes. A confirmatory test of an allocation policy would need its own entry before
+    the second freeze, on data not used here.
   - **R20, the dev result of the reader milestones and the D17 selection; the owner's pause
     of Stage 3; exploratory analyses logged before they are computed (2026-11-19),
     [delegated] except where the owner is named.** *Result* (dev, the set-up of R19,
