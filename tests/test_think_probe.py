@@ -1,5 +1,6 @@
 """The thinking probe's helpers (PREREG R22, E2): the escalation slice, the hashed
-choice of problems, ESC continued over a set's seeded order, the grade after </think>."""
+choice of problems, ESC continued over a set's seeded order, the grade after the
+close of thinking."""
 
 from __future__ import annotations
 
