@@ -25,7 +25,7 @@ The switch to thinking mode dominates all of them.
 | ESC (2, 2) then think (DART's policy) | +2.7 [+0.2, +5.0] over the full envelope (generated rule only; +0.7 prompt-inclusive) | R25 |
 | Thinking read of the 8 candidates minus a fresh thinking solve | −11.6 [−18.1, −5.2]; paired in E2, the read generated half the tokens (5,043 against 9,988) | R23, R25 |
 | Headroom | perfect gate about 5 points over DART; perfect selector over 2 or 4 thinking solves about 5 to 6 points over their vote | R26 |
-| Thinking read by stratum (E4) | thinking shortened everywhere (to a third or half). Credit: c0 −29.5 (half the reads adopt a wrong shown answer); c1 −26.5 (a lone right candidate is not recovered); c2+ +5.5 [−2.1, +12.7] at 37% of the thinking tokens | R27 |
+| Thinking read by stratum (E4) | thinking shortened everywhere (to a third or half). Credit: c0 −29.5 (half the reads adopt a wrong shown answer); c1 −26.5 (a lone right candidate is not recovered); c2+ +5.5 [−2.1, +12.7] at 37% of the thinking tokens (cheaper under the generated rule only; the 9,500-token prompt makes it dearer prompt-inclusive) | R27 |
 
 ## 2. Position against prior work
 

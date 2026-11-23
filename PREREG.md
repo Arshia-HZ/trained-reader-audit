@@ -501,23 +501,31 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     - *Reading.* Descriptive, dev only, one read per set. The reads cover only sets that
       ESC (2, 8) leaves without an agreeing pair, so c2+ means a split vote with at least
       two right answers.
-      - Shown candidates shorten the thinking in every stratum, to between a third and a
-        half of a fresh solve. The epistemic-word density falls in every stratum too.
+      - With the candidates shown, thinking is shorter in every stratum: between a third
+        and a half of a fresh solve. The epistemic-word density falls in every stratum
+        too. The read prompt also differs from the fresh one in its instructions and in
+        about 9,500 tokens of context. Only a length-matched placebo arm (step 3) can
+        separate the candidates' content from that framing and length.
       - The cost in credit depends on what is shown. Where no shown answer is right (c0),
         about half the reads adopt one of the wrong shown answers; a fresh solve lands on
         one of them 6% of the time. That costs about 30 points.
-      - Where exactly one shown answer is right (c1), the read loses about as much: it
-        does not recover a lone right candidate better than a fresh solve finds the
-        answer.
+      - Where exactly one shown answer is right (c1), the read loses about as much. It
+        recovers the lone right candidate far more often than the vote of the set does,
+        but less often than a fresh solve finds the answer.
       - Where two or more are right (c2+), the read is no worse than a fresh solve, at
         about 37% of its thinking tokens: +5.5, with an interval that includes zero.
+      - *The vote of the same sets, for reference:* c0 0.0, c1 7.6, c2+ 77.4. It was
+        computed with `cand_sets.vote_credit` by a scratch driver after this entry's
+        table, and is not in the report file.
       - This matches R26's expectation for c0 and c2+ and adds the c1 result. The loss is
         not a uniform suppression of exploration: thinking is shorter everywhere, but
-        credit falls only where the shown plurality is not right.
+        credit falls only where fewer than two shown answers are right.
       - Whether a cheap signal can tell c2+ sets from the others at test time, so that
         only they are read, is a question for a later dated entry. If such a signal
-        exists, the read would be a cheaper substitute for a fresh solve on those sets.
-        It has not been shown to beat one.
+        exists, the read would be a cheaper substitute for a fresh solve on those sets,
+        under the generated rule only. Under the prompt-inclusive rule, its prompt of
+        about 9,500 tokens makes it dearer than a fresh solve (about 12,600 tokens
+        against about 8,500). It has not been shown to beat one.
     - Nothing preregistered changes.
   - **R26, the direction after E3 and the next exploratory analyses (2026-11-24),
     [delegated]; written before E4 is computed.** The owner chose the direction the same
