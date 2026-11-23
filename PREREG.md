@@ -481,6 +481,44 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R27, the result of E4 (2026-11-24), [delegated].** Run once as R26 set it, at
+    commit `4cf0796`, with `scripts/28_read_strata.py`, on a fresh notebook from the hub
+    copies of the pools and of `think_pilot_qwen3-1.7b/`. The report is
+    `docs/dev_read_strata.md` and `.json`. The run has 251 reads on 131 problems: c0 94
+    reads on 55 problems, c1 39 on 33, c2+ 118 on 73. Read minus fresh, means over
+    problems, 95% bootstrap over problems.
+
+    | Stratum | Credit, read against fresh | Thinking tokens, read against fresh | Epistemic words per 1,000 | Answer equals a shown one, read against fresh |
+    | --- | --- | --- | --- | --- |
+    | c0 | 24.5 against 54.1: −29.5 [−40.5, −19.1] | 5,880 against 13,339 | −4.0 [−5.6, −2.5] | 51.8% against 6.4% |
+    | c1 | 40.9 against 67.4: −26.5 [−44.7, −8.3] | 5,056 against 10,424 | −6.6 [−10.1, −3.3] | 80.3% against 82.6% |
+    | c2+ | 84.9 against 79.5: +5.5 [−2.1, +12.7] | 3,074 against 8,365 | −7.5 [−9.8, −5.3] | 94.5% against 89.0% |
+    | all | 57.3 against 68.9: −11.6 [−17.9, −5.3] | 4,356 against 10,516 | −6.3 [−7.8, −4.9] | 77.5% against 59.3% |
+
+    - *Checks.* The pooled credit contrast equals R25's −11.6; only the interval moves,
+      with the seed. The headroom figures of R26 are reproduced exactly by the
+      repository code.
+    - *Reading.* Descriptive, dev only, one read per set. The reads cover only sets that
+      ESC (2, 8) leaves without an agreeing pair, so c2+ means a split vote with at least
+      two right answers.
+      - Shown candidates shorten the thinking in every stratum, to between a third and a
+        half of a fresh solve. The epistemic-word density falls in every stratum too.
+      - The cost in credit depends on what is shown. Where no shown answer is right (c0),
+        about half the reads adopt one of the wrong shown answers; a fresh solve lands on
+        one of them 6% of the time. That costs about 30 points.
+      - Where exactly one shown answer is right (c1), the read loses about as much: it
+        does not recover a lone right candidate better than a fresh solve finds the
+        answer.
+      - Where two or more are right (c2+), the read is no worse than a fresh solve, at
+        about 37% of its thinking tokens: +5.5, with an interval that includes zero.
+      - This matches R26's expectation for c0 and c2+ and adds the c1 result. The loss is
+        not a uniform suppression of exploration: thinking is shorter everywhere, but
+        credit falls only where the shown plurality is not right.
+      - Whether a cheap signal can tell c2+ sets from the others at test time, so that
+        only they are read, is a question for a later dated entry. If such a signal
+        exists, the read would be a cheaper substitute for a fresh solve on those sets.
+        It has not been shown to beat one.
+    - Nothing preregistered changes.
   - **R26, the direction after E3 and the next exploratory analyses (2026-11-24),
     [delegated]; written before E4 is computed.** The owner chose the direction the same
     day, after a check of alternatives (adapter merging of debate roles; repairing
