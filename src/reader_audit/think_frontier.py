@@ -131,6 +131,48 @@ def escalation_by_solve(
     return credit, {r: float(np.mean([c[r] for c in costs])) for r in al.RULES}
 
 
+def cascade_oracles(
+    pool: ProblemPool,
+    k: int,
+    draws: int,
+    solves: Sequence[Solve],
+    cap: int,
+    rule: str,
+) -> dict[str, tuple[float, float]]:
+    """(cost, credit) of ESC (window 2, cap 2) then one thinking solve, and of three
+    oracles over it (PREREG R26): ``gate`` accepts the two samples' plurality exactly
+    where its credit is at least the problem's mean thinking credit; ``agree`` accepts
+    only an agreeing pair and only where that is no worse; ``mode`` takes, per problem,
+    one sample or one thinking solve, whichever has more credit (ties to the sample)."""
+    units = al.unit_costs(pool)
+    t_credit, t_costs = escalation_by_solve(solves, cap, units)
+    think = (t_costs[rule], t_credit)
+    groups = group_answers(
+        [c.answer for c in pool.candidates], [c.correct for c in pool.candidates]
+    )
+    rows: dict[str, list[tuple[float, float]]] = {"dart": [], "gate": [], "agree": []}
+    for draw in range(draws):
+        prefix = set_prefix_costs(pool, k, draw)
+        drawn, c, agreed = al.esc_on_order(
+            groups, draw_set(pool, k, draw).positions, 2, 2
+        )
+        base = prefix[drawn - 1][rule]
+        accept, escalate = (base, c), (base + think[0], think[1])
+        rows["dart"].append(accept if agreed else escalate)
+        rows["gate"].append(accept if c >= t_credit else escalate)
+        rows["agree"].append(accept if agreed and c >= t_credit else escalate)
+    out = {name: tuple(map(float, np.mean(r, axis=0))) for name, r in rows.items()}
+    one = (1.0, float(np.mean([c.correct for c in pool.candidates])))
+    out["mode"] = one if one[1] >= think[1] else think
+    return out
+
+
+def pass_at(solves: Sequence[Solve], m: int) -> float:
+    """The share of m-subsets of the solves with at least one correct, averaged."""
+    groups = list(combinations(range(len(solves)), m))
+    return float(np.mean([any(solves[i].correct for i in g) for g in groups]))
+
+
 def read_vs_fresh(
     reads: Mapping[int, Solve], solves: Sequence[Solve], cap: int
 ) -> float | None:

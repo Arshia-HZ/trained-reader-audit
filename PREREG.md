@@ -481,6 +481,75 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R26, the direction after E3 and the next exploratory analyses (2026-11-24),
+    [delegated]; written before E4 is computed.** The owner chose the direction the same
+    day, after a check of alternatives (adapter merging of debate roles; repairing
+    anchoring in thinking reads; a latency-aware router; cross-family teams; code
+    recombination). The reasons are in `docs/PAPER_PLAN.md`.
+    - *Direction.* The thesis is framed as a matched-cost audit of where a small model's
+      test-time tokens should go. It covers three channels: messages between agents (the
+      Channel Audit), a GRPO-trained reader of K = 8 samples (this study), and candidates
+      shown to a thinking solver (E2, E3). Each is set against SC, ESC and the switch to
+      thinking mode on one cost-accuracy envelope. No hypothesis, margin or rule of
+      sections 4 to 6 changes. Stage 3's costly runs stay paused: reader seeds 2 and 3,
+      and the solver-GRPO seeds. Solver-GRPO is run only as the control of a training
+      direction chosen later. The confirmatory step gets its own entry before the second
+      freeze: the main claims on the primary set, and a measured wall-clock cost rule
+      under one stated serving configuration.
+    - *Post-hoc headroom on the E3 data, logged here.* It was computed on 2026-11-19 by a
+      scratch script, before this entry; it is descriptive, dev only, and not
+      preregistered. Script 28 below recomputes it in the repository. Credit in percent;
+      cost in pool samples, generated rule, with prompt-inclusive in parentheses.
+      - ESC (2, 2) then a thinking solve: 80.7 at 7.59 (6.81).
+      - An oracle gate: 85.4 at 6.94 (6.24). It accepts the two-sample answer exactly
+        where that answer's credit is at least the problem's mean thinking credit, and
+        thinks otherwise.
+      - An oracle that also thinks where an agreeing pair is wrong: 84.6 at 8.02 (7.18).
+      - An oracle mode choice per problem, between one sample and one thinking solve:
+        84.5 at 6.89 (5.92).
+      - Always think: 83.4 at 8.68 (7.39).
+      - Thinking pass@1 83.4, pass@2 90.1, pass@4 93.8; the vote of 2 is 84.1 and the
+        vote of 4 is 88.4.
+      - So a perfect gate has about 5 points over the DART-style cascade, and a perfect
+        selector over 2 or 4 thinking solves has about 5 to 6 points over their vote at
+        the same cost.
+    - *E4, the thinking read against the fresh thinking solve by what the read is shown.*
+      It is computed from the E3 data alone, with no generation.
+      - *Units.* Each of the 251 thinking reads of R24's arm B, paired with the mean of
+        its problem's 4 fresh solves.
+      - *Strata.* c0, c1 or c2+ (D15): the number of correct candidates among the 8 the
+        read is shown. They are labels from candidate correctness, never from the read's
+        outcome.
+      - *Quantities, read minus fresh, per stratum and pooled.*
+        - Credit at the 16,384 cap, the contrast of R25.
+        - Thinking tokens: the tokens before `</think>`, or the whole completion when
+          the thinking is unclosed.
+        - Epistemic-word density per 1,000 whitespace words of the thinking text. The
+          lexicon is fixed now: "wait", "hmm", "alternatively", "verify",
+          "double-check", "let me check" and "but", as case-insensitive whole-word
+          matches. It is a lexical proxy in the spirit of arXiv 2607.05184 and is read
+          descriptively only.
+        - The share of answers equal (`answers_equivalent`) to an answer among the 8
+          shown. The fresh solves checked against the same set give its base rate.
+      - *Intervals.* Bootstrap over problems, 2,000 resamples, seed 20261124. Strata
+        counts are reported.
+      - *Expectation, not a hypothesis.* The read loses most on c0, where no shown answer
+        is right, and less or not at all on c2+. A loss of similar size in every stratum,
+        with shorter thinking throughout, would point to suppressed exploration
+        regardless of what is shown, not to copying wrong answers. Arm B covers sets that
+        ESC (2, 8) leaves without an agreeing pair, so c2+ sets are hard sets with a
+        split vote. That limits any reading of E4 to such sets.
+      - *Code.* `src/reader_audit/read_strata.py` and `scripts/28_read_strata.py`, with
+        tests; output `docs/dev_read_strata.md` and `.json`.
+    - *E5, a kill test for recombining partial programs; logged as an option, not run.*
+      On a code benchmark with per-test results, it asks how common sets are whose union
+      of passed visible tests covers the tests when no single candidate does, and whether
+      an untrained recombination prompt beats matched-token repair on them. The
+      comparisons also include fresh resampling and a fresh thinking solve. It needs new
+      infrastructure (sandboxed execution) and is the owner's call. Benchmark, model,
+      budget and stop thresholds are set in its own entry before any generation.
+    - *Not pursued.* Merging debate-role adapters, a latency-aware router as a method,
+      and cross-family teams. Section 2 of `docs/PAPER_PLAN.md` gives the reasons.
   - **R25, the result of E3, the thinking pilot (2026-11-19), [delegated].** Run once as
     R24 set it: generation at commit `4b2bdc4`, analysis at `229e150`
     (`scripts/27_thinking_frontier.py`). The run produced 832 fresh solves on 208 problems
