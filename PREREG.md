@@ -481,6 +481,48 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R28, reader seeds 2 and 3, trained to step 100 only (2026-11-24); the owner
+    approved it the same day, before either run started.**
+    - *What changes.* R20's pause of Stage 3 is lifted for two runs only: reader seeds 2
+      and 3, with seeds 20261116 and 20261117 (R17). The solver-GRPO runs stay paused,
+      and no reader run goes past step 100. The seed count stays at 3 (D7, from the
+      measured 23.03 GPU-hours of seed 1's 300 steps, R18).
+    - *Checkpoint, replacing D17's choice among steps 100, 200 and 300 for seeds 2 and
+      3.* Step 100 for every seed. It is fixed now, before seeds 2 and 3 exist. The
+      reasons:
+      - D17 chose step 100 for seed 1 (R20).
+      - At steps 200 and 300, about 22% of reads were cut at 2,048 tokens (R21).
+      - A fixed step removes any per-seed choice on dev.
+      - It cuts the training cost by two thirds.
+
+      The three seeds are then evaluated at step 100. The confirmatory H1a with three
+      seeds is as preregistered except for this checkpoint rule. The step-2 entry states
+      whether H1a is in the confirmatory set.
+    - *How a run is made and stopped.*
+      - Each run uses the frozen command at tag `stage2-training-freeze` (R17), unchanged:
+        `scripts/20_train_grpo.py --arm reader --expect-pools 2400 --steps 300
+        --save-every 25 --milestones 100 200 300 --upload-repo
+        Arshia-HZ/trained-reader-audit-ckpt`, with `--out runs/reader_s2` and `--seed
+        20261116`, or `reader_s3` and 20261117.
+      - The plan, the order of rows and the rows hash are those of a 300-step run. The
+        learning rate is constant after 10 warm-up steps, so the first 100 steps are
+        those of a full run.
+      - A watcher on the notebook stops the run once `saves.jsonl` shows step 100's state
+        and milestone uploaded, which is before the step-125 save.
+      - It then copies the fp32 master weights of the local `checkpoint-100` to
+        `reader_sN/master_0100/`, as for seed 1's `master_0300` (R19). This keeps D12's
+        agreement check possible for these seeds.
+      - The two resumable-state repos of a stopped run (about 20 GB each) stay until the
+        owner approves their deletion. Storage allows that for one seed only: the account
+        shows about 20 GB now, and a stopped seed adds about 50 GB with its states. So
+        seed 2's state repos go before seed 3 starts.
+    - *Measured cost.* Steps 1 to 100 of seed 1 took 6.82 hours (mean 245 seconds a
+      step), and its saves up to step 100 about 0.1 hour. With engine start, expect about
+      7 hours a seed, one molab session each.
+    - *Health.* R17's triggers and checks apply unchanged.
+    - *Dev evaluation of seeds 2 and 3.* Step 100 only, as R19 did for seed 1 (the
+      `reader_full` arm, then `candidate_free`). It is descriptive and chooses nothing. It
+      supplies the trained reader's dev SD for the second freeze (O3, O4).
   - **R27, the result of E4 (2026-11-24), [delegated].** Run once as R26 set it, at
     commit `4cf0796`, with `scripts/28_read_strata.py`, on a fresh notebook from the hub
     copies of the pools and of `think_pilot_qwen3-1.7b/`. The report is
