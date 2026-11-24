@@ -485,8 +485,9 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     approved it the same day, before either run started.**
     - *What changes.* R20's pause of Stage 3 is lifted for two runs only: reader seeds 2
       and 3, with seeds 20261116 and 20261117 (R17). The solver-GRPO runs stay paused,
-      and no reader run goes past step 100. The seed count stays at 3 (D7, from the
-      measured 23.03 GPU-hours of seed 1's 300 steps, R18).
+      and no reader run goes past step 100. The seed count stays at 3: D7's rule gave 3 at
+      the Stage 2 pilot (R16, 20.3 projected GPU-hours), and the freeze recorded it
+      (R17).
     - *Checkpoint, replacing D17's choice among steps 100, 200 and 300 for seeds 2 and
       3.* Step 100 for every seed. It is fixed now, before seeds 2 and 3 exist. The
       reasons:
@@ -507,11 +508,16 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
       - The plan, the order of rows and the rows hash are those of a 300-step run. The
         learning rate is constant after 10 warm-up steps, so the first 100 steps are
         those of a full run.
-      - A watcher on the notebook stops the run once `saves.jsonl` shows step 100's state
-        and milestone uploaded, which is before the step-125 save.
-      - It then copies the fp32 master weights of the local `checkpoint-100` to
-        `reader_sN/master_0100/`, as for seed 1's `master_0300` (R19). This keeps D12's
-        agreement check possible for these seeds.
+      - A watcher on the notebook acts once `saves.jsonl` shows step 100's state and
+        milestone uploaded. While the run continues, it copies the fp32 master weights of
+        the local `checkpoint-100` to `reader_sN/master_0100/`, as for seed 1's
+        `master_0300` (R19), and checks that they are on the hub. Then it kills the run,
+        before the step-125 save that would rotate `checkpoint-100` away. This keeps D12's
+        agreement check possible for these seeds. The frozen code has no save on a signal,
+        so the kill writes nothing. *Amended the same day, while seed 2 was at step 2 and
+        before any save:* the first watcher killed first and copied second. The order was
+        swapped so the copy cannot be lost. The seed-count citation was also corrected to
+        R16 and R17.
       - The two resumable-state repos of a stopped run (about 20 GB each) stay until the
         owner approves their deletion. Storage allows that for one seed only: the account
         shows about 20 GB now, and a stopped seed adds about 50 GB with its states. So
@@ -520,6 +526,10 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
       step), and its saves up to step 100 about 0.1 hour. With engine start, expect about
       7 hours a seed, one molab session each.
     - *Health.* R17's triggers and checks apply unchanged.
+    - *Stack.* Seed 2 runs with torch 2.14.0+cu130, vLLM 0.33.0, TRL 1.18.0 and
+      transformers 5.20.2, installed by the same pinned command as seed 1's environment.
+      Seed 1's `starts.jsonl` does not record versions, so its torch build is not on
+      file.
     - *Dev evaluation of seeds 2 and 3.* Step 100 only, as R19 did for seed 1 (the
       `reader_full` arm, then `candidate_free`). It is descriptive and chooses nothing. It
       supplies the trained reader's dev SD for the second freeze (O3, O4).
