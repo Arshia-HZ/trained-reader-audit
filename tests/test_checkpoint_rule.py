@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import math
+import shutil
+import statistics
 from pathlib import Path
 
 import pytest
@@ -259,3 +261,93 @@ def test_a_milestone_with_missing_problems_is_reported_not_selected(runs, tmp_pa
     )
     assert not report["complete"] and report["selected"] is None
     assert any("step 300" in m for m in report["incomplete"])
+
+
+def _per_seed(runs):
+    summarise, pools, dirs = runs
+    return {
+        f"reader_s{i}": cr.summarise_step([d], pools, summarise, draws=DRAWS, k=K)
+        for i, d in enumerate(dirs.values(), start=1)
+    }
+
+
+def test_the_seeds_report_gives_each_seed_and_the_spread_over_seeds(runs):
+    per_run = _per_seed(runs)
+    report = cr.seeds_report(
+        per_run,
+        N_PROBLEMS,
+        arm_generations=N_PROBLEMS * DRAWS * REPS,
+        arms=("reader_full",),
+    )
+    assert report["complete"] == list(per_run) and report["incomplete"] == {}
+    assert "selected" not in report  # descriptive: it chooses nothing
+    means = [r["H1a"]["mean"] for r in per_run.values()]
+    h1a = report["across_seeds"]["H1a"]
+    assert h1a["seeds"] == 3
+    assert h1a["mean"] == pytest.approx(statistics.mean(means))
+    assert h1a["sd_over_seeds"] == pytest.approx(statistics.stdev(means))
+    assert h1a["sd_over_problems_by_seed"] == {
+        run: r["H1a"]["sd"] for run, r in per_run.items()
+    }
+    # no candidate-free arm in these mock runs: no H2, and nothing pretends there is
+    assert report["across_seeds"]["H2_single_arm"]["seeds"] == 0
+    assert report["across_seeds"]["H2_single_arm"]["mean"] is None
+
+
+def test_an_incomplete_seed_is_listed_and_left_out_of_the_spread(runs, tmp_path):
+    summarise, pools, dirs = runs
+    per_run = _per_seed(runs)
+    short = tmp_path / "short"
+    first = sorted(dirs[300].glob("shard_*"))[0]
+    shutil.copytree(first, short / first.name)
+    per_run["reader_s3"] = cr.summarise_step(
+        [short], pools, summarise, draws=DRAWS, k=K
+    )
+    per_run["reader_s4"] = None
+    report = cr.seeds_report(
+        per_run,
+        N_PROBLEMS,
+        arm_generations=N_PROBLEMS * DRAWS * REPS,
+        arms=("reader_full",),
+    )
+    assert report["complete"] == ["reader_s1", "reader_s2"]
+    assert any("problems" in why for why in report["incomplete"]["reader_s3"])
+    assert report["incomplete"]["reader_s4"] == ["no finished shard"]
+    assert report["across_seeds"]["H1a"]["seeds"] == 2
+    # a missing arm makes every seed incomplete
+    both = cr.seeds_report(
+        _per_seed(runs), N_PROBLEMS, arm_generations=N_PROBLEMS * DRAWS * REPS
+    )
+    assert both["complete"] == [] and both["across_seeds"]["H1a"]["mean"] is None
+
+
+def test_the_seeds_table_has_a_row_per_seed_and_the_mean(runs):
+    spec = importlib.util.spec_from_file_location(
+        "dev_checkpoints", ROOT / "scripts" / "23_dev_checkpoints.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    per_run = _per_seed(runs)
+    per_run["reader_s4"] = None
+    report = cr.seeds_report(
+        per_run,
+        N_PROBLEMS,
+        arm_generations=N_PROBLEMS * DRAWS * REPS,
+        arms=("reader_full",),
+    )
+    report["step"] = 100
+    text = module.seeds_markdown(report)
+    lines = text.splitlines()
+    assert lines[0].startswith("# Dev evaluation of step 100")
+    h1a = per_run["reader_s1"]["H1a"]
+    assert any(
+        ln.startswith("| reader_s1 |") and f"{100 * h1a['mean']:+.1f}" in ln
+        for ln in lines
+    )
+    assert any(
+        ln.startswith("| reader_s4 | incomplete: no finished shard") for ln in lines
+    )
+    mean = report["across_seeds"]["H1a"]["mean"]
+    assert any(
+        ln.startswith(f"| mean over seeds | {100 * mean:+.1f} |") for ln in lines
+    )

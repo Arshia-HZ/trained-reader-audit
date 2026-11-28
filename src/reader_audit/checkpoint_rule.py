@@ -9,6 +9,9 @@ finite stops it.
 The evaluation differs from the untrained reader's dev run (R13) in the weights only.
 ``identity_problems`` lists everything that could differ besides them: the sampling
 defaults, the chat template, the tokenizer and the weight format.
+
+``seeds_report`` describes one milestone across the reader's seeds (R28); it selects
+nothing.
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ import hashlib
 import json
 import math
 import shutil
+import statistics
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -217,6 +221,67 @@ def rule_report(
         "incomplete": missing,
         "selected": select_checkpoint(gains) if complete else None,
         "per_step": {str(s): per_step[s] for s in sorted(per_step)},
+    }
+
+
+SEED_QUANTITIES = ("H1a", "H2_single_arm", "H4a")
+
+
+def seeds_report(
+    per_run: Mapping[str, dict | None],
+    n_problems: int,
+    *,
+    arm_generations: int,
+    arms: Sequence[str] = (SELECTION_ARM, FREE_ARM),
+) -> dict:
+    """One milestone across seeds (R28): descriptive, it selects nothing.
+
+    A seed is complete when it has every problem, no H1a that is not estimable and
+    ``arm_generations`` generations in each arm (``None``: no finished shard). Only
+    complete seeds enter the mean over seeds and the SD over seeds of each quantity's
+    per-seed mean; the per-seed SD over problems is what the second freeze restates
+    O3 and O4 with.
+    """
+    incomplete: dict[str, list[str]] = {}
+    for run, r in per_run.items():
+        if r is None:
+            incomplete[run] = ["no finished shard"]
+            continue
+        why = []
+        if r["problems"] != n_problems:
+            why.append(f"{r['problems']} of {n_problems} problems")
+        if r["H1a"]["not_estimable"]:
+            why.append(f"{r['H1a']['not_estimable']} not estimable")
+        for arm in arms:
+            got = r["outcomes_by_arm"].get(arm, 0)
+            if got != arm_generations:
+                why.append(f"{got} of {arm_generations} {arm} generations")
+        if why:
+            incomplete[run] = why
+    complete = [run for run in per_run if run not in incomplete]
+
+    def finite(x) -> float | None:
+        return x if x is not None and math.isfinite(x) else None
+
+    across = {}
+    for q in SEED_QUANTITIES:
+        means = [
+            m for run in complete if (m := finite(per_run[run][q]["mean"])) is not None
+        ]
+        across[q] = {
+            "seeds": len(means),
+            "mean": statistics.fmean(means) if means else None,
+            "sd_over_seeds": statistics.stdev(means) if len(means) > 1 else None,
+            "sd_over_problems_by_seed": {
+                run: finite(per_run[run][q]["sd"]) for run in complete
+            },
+        }
+    return {
+        "note": "descriptive (R28): each seed by R13's summarise; selects nothing",
+        "complete": complete,
+        "incomplete": incomplete,
+        "across_seeds": across,
+        "per_run": dict(per_run),
     }
 
 

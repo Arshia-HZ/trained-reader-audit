@@ -9,6 +9,10 @@
     # the rule, from the finished shards of the three milestones
     python scripts/23_dev_checkpoints.py select --run reader_s1 --download-pools \
         --download-shards --report docs/dev_checkpoint_rule.json
+    # step 100 of every seed, both arms, descriptive (R28)
+    python scripts/23_dev_checkpoints.py seeds --runs reader_s1 reader_s2 reader_s3 \
+        --step 100 --download-pools --download-shards \
+        --report docs/dev_seeds_step100.json --md docs/dev_seeds_step100.md
 
 The reader is the trained milestone read from the private checkpoint repo (a pinned
 commit), on the 208 level-5 dev problems of R13: K = 8, 16 seeded sets per problem, 2
@@ -280,12 +284,111 @@ def cmd_select(args) -> int:
     return 0
 
 
+def _pct(x, sd=None, n=None) -> str:
+    if x is None:
+        return "-"
+    out = f"{100 * x:+.1f}"
+    if sd is not None:
+        out += f" (SD {sd:.3f}"
+        out += f", {n} problems)" if n is not None else ")"
+    return out
+
+
+def seeds_markdown(report: dict) -> str:
+    """The table of ``seeds_report``: one row per seed, then the mean over seeds."""
+    rows = [
+        f"# Dev evaluation of step {report['step']} across reader seeds (R28)",
+        "",
+        "Descriptive, dev only; it selects nothing. Points, means over the 208",
+        "level-5 dev problems (H2 and H4a over the problems that have a c1 or c2+",
+        "set), SD over problems in brackets. Seed 1's step 100 was chosen by D17 as",
+        "the best of three steps, so its value is biased upward; seeds 2 and 3 were",
+        "fixed at step 100 by R28.",
+        "",
+        "| Seed | H1a, reader minus matched SC | H2, reader minus its candidate-free"
+        " solve (c1) | H4a, reader minus vote (c2+) | Read tokens | k* |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for run, r in report["per_run"].items():
+        if r is None or run in report["incomplete"]:
+            why = "; ".join(report["incomplete"].get(run, []))
+            rows.append(f"| {run} | incomplete: {why} | | | | |")
+            continue
+        h1, h2, h4 = (r[q] for q in cr.SEED_QUANTITIES)
+        rows.append(
+            f"| {run} | {_pct(h1['mean'], h1['sd'])}"
+            f" | {_pct(h2['mean'], h2['sd'], h2['n'])}"
+            f" | {_pct(h4['mean'], h4['sd'], h4['n'])}"
+            f" | {r['reader_generated_tokens_mean']:.0f} | {r['k_star_mean']:.2f} |"
+        )
+    a = report["across_seeds"]
+    rows.append(
+        "| mean over seeds | "
+        + " | ".join(_pct(a[q]["mean"]) for q in cr.SEED_QUANTITIES)
+        + " | | |"
+    )
+    rows.append(
+        "| SD over seeds (points) | "
+        + " | ".join(
+            "-"
+            if a[q]["sd_over_seeds"] is None
+            else f"{100 * a[q]['sd_over_seeds']:.1f}"
+            for q in cr.SEED_QUANTITIES
+        )
+        + " | | |"
+    )
+    return "\n".join(rows) + "\n"
+
+
+def cmd_seeds(args) -> int:
+    pools = get_pools(args)
+    out_root = Path(args.out)
+    if args.download_shards:
+        from huggingface_hub import snapshot_download
+
+        snapshot_download(
+            RAW_REPO,
+            repo_type="dataset",
+            allow_patterns=[
+                f"dev_trained_{run}_step{args.step:04d}_*/*" for run in args.runs
+            ],
+            local_dir=str(out_root),
+            token=os.environ["HF_TOKEN"],
+        )
+    summarise = load_summarise()
+    arms = [cr.SELECTION_ARM, cr.FREE_ARM]
+    per_run = {}
+    for run in args.runs:
+        roots = [out_root / slug_for(run, args.step, [arm]) for arm in arms]
+        found = any(cr.finished_shards(root) for root in roots)
+        per_run[run] = cr.summarise_step(roots, pools, summarise) if found else None
+    n = len(pools)
+    report = cr.seeds_report(
+        per_run, n, arm_generations=n * cr.DRAWS * cr.REPLICATES, arms=arms
+    )
+    report["step"] = args.step
+    report["settings"] = {
+        "level": cr.LEVEL,
+        "k": cr.K,
+        "draws": cr.DRAWS,
+        "replicates": cr.REPLICATES,
+        "temperature": cr.TEMPERATURE,
+        "prompt_version": rp.PROMPT_VERSION,
+    }
+    print(json.dumps({k: v for k, v in report.items() if k != "per_run"}, indent=1))
+    cr.write_report(report, args.report)
+    if args.md:
+        Path(args.md).write_text(seeds_markdown(report), encoding="utf-8")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("run", "select"):
+    for name in ("run", "select", "seeds"):
         p = sub.add_parser(name)
-        p.add_argument("--run", default="reader_s1")
+        if name != "seeds":
+            p.add_argument("--run", default="reader_s1")
         p.add_argument("--out", default="runs/dev_trained")
         p.add_argument("--pools-root")
         p.add_argument("--download-pools", action="store_true")
@@ -301,8 +404,14 @@ def main(argv: list[str] | None = None) -> int:
     select = sub.choices["select"]
     select.add_argument("--download-shards", action="store_true")
     select.add_argument("--report", default="docs/dev_checkpoint_rule.json")
+    seeds = sub.choices["seeds"]
+    seeds.add_argument("--runs", nargs="+", required=True)
+    seeds.add_argument("--step", type=int, default=100)
+    seeds.add_argument("--download-shards", action="store_true")
+    seeds.add_argument("--report", default="docs/dev_seeds_step100.json")
+    seeds.add_argument("--md")
     args = ap.parse_args(argv)
-    return cmd_run(args) if args.cmd == "run" else cmd_select(args)
+    return {"run": cmd_run, "select": cmd_select, "seeds": cmd_seeds}[args.cmd](args)
 
 
 if __name__ == "__main__":
