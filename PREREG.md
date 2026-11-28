@@ -511,8 +511,8 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
       - Means are in points. The SD over problems is in brackets, as a proportion, as R20
         writes it. The SD over seeds is in points.
       - The three seeds read the same seeded sets: c0 844, c1 301 and c2+ 2,183, with the
-        c1 contrast on 64 problems and H4a on 154. So their spread comes from the readers,
-        not from different sets.
+        c1 contrast on 64 problems and H4a on 154. So their spread comes from the training
+        seeds and their sampling, not from different sets.
       - The cut columns count generations that stopped at the 2,048-token cap.
 
     | Seed | H1a, reader minus matched SC | c1, reader minus its candidate-free solve | H4a, c2+, reader minus the vote | Read tokens | k\* | Reads cut | Candidate-free solves cut |
@@ -554,9 +554,9 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
         - Seed 3's candidate-free solves are also cut most often (30.6%), so its longer
           output is not specific to reading.
         - R28 fixed step 100 partly because reads at steps 200 and 300 were cut about 22%
-          of the time (R21). The low cut share at step 100 holds for seeds 1 and 2, and
-          for seed 3 it lies between the two. Seed 3's H1a is still +0.1. R28's rule is
-          not changed.
+          of the time (R21). The low cut share at step 100 holds for seeds 1 and 2. For
+          seed 3 it lies between seed 1's step-100 share (1.65%) and the share at steps
+          200 and 300 (about 22%). Seed 3's H1a is still +0.1. R28's rule is not changed.
     - *For the second freeze (O3, O4).* The trained reader's dev SD over problems is
       0.144, 0.137 and 0.177 for H1a, and 0.160, 0.162 and 0.191 for H4a.
       - R13 measured 0.152 and 0.172 for the untrained reader; seed 3's values exceed
