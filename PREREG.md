@@ -481,6 +481,103 @@ or a hypothesis. No hypothesis, margin or planning effect has been changed.
     R6 shows the stratum-wise hypotheses are underpowered at 4 draws; the rule fixes a design
     parameter by a pre-stated criterion and changes no hypothesis. The owner may overrule
     it (O1). Also corrected: the harness row of section 2 (pinned, not "not yet loaded").
+  - **R29, the dev result of reader seeds 2 and 3 at step 100 (2026-11-28), [delegated].**
+    Run as R28 set it, with the set-up of R19. The summary code was committed before any
+    seed 2 or seed 3 score.
+    - *Set-up.*
+      - The jobs ran from a clone of main at `93f0e18`. The evaluation path has not
+        changed since `673f4b0` (R19's amendment): the commits in between add only
+        exploratory modules.
+      - The evaluation environment has vLLM 0.33.0, torch 2.14.0+cu130, transformers
+        5.20.2 and huggingface_hub 2.5.0, on one NVIDIA RTX PRO 6000 Blackwell Server
+        Edition. Every job ran with `jobs.JOB_ENV` (`VLLM_USE_FLASHINFER_SAMPLER=0`), as
+        seed 1's did. A first start without it failed at engine start, because vLLM's
+        FlashInfer sampler needs `ninja` to compile. It made no generation.
+      - Both milestones, `reader_s2/step_0100` and `reader_s3/step_0100`, were read at
+        commit `6dbc9b98ad` of the checkpoint repo. That commit is seed 3's last save and
+        holds both seeds, so both jobs record the same hub commit. Each job's
+        `model.safetensors` has the hub's sha256 for its own seed: seed 2 `78ddfbf2…`,
+        seed 3 `b591901a…`. R19's identity check passed for both.
+      - Each seed ran `reader_full` (6,656 generations), then `candidate_free` (6,656).
+        Each arm has 8 shards with `DONE.json`. All shards were uploaded to the raw dataset
+        as `dev_trained_reader_s{2,3}_step0100_*`, with their run records, and no upload
+        failed. Both seeds ran from 11:54 to 14:22 UTC.
+      - The summary is `scripts/23_dev_checkpoints.py seeds` (commit `7f0d219`). It passes
+        each seed through R13's `summarise`. Before any seed 2 or seed 3 data were read, it
+        reproduced exactly seed 1's step-100 values in `docs/dev_checkpoint_rule.json`.
+        The report is `docs/dev_seeds_step100.json` and `.md`.
+    - *Result.* Dev, the 208 level-5 problems. Every seed is complete: all 208 problems,
+      6,656 generations in each arm, and no problem that is not estimable.
+      - Means are in points. The SD over problems is in brackets, as a proportion, as R20
+        writes it. The SD over seeds is in points.
+      - The three seeds read the same seeded sets: c0 844, c1 301 and c2+ 2,183, with the
+        c1 contrast on 64 problems and H4a on 154. So their spread comes from the readers,
+        not from different sets.
+      - The cut columns count generations that stopped at the 2,048-token cap.
+
+    | Seed | H1a, reader minus matched SC | c1, reader minus its candidate-free solve | H4a, c2+, reader minus the vote | Read tokens | k\* | Reads cut | Candidate-free solves cut |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | 1 (chosen by D17) | +0.5 (0.144) | +6.4 (0.403) | −2.5 (0.160) | 730 | 8.74 | 1.65% | 23.0% |
+    | 2 | −0.1 (0.137) | +6.4 (0.401) | −2.5 (0.162) | 553 | 8.59 | 0.05% | 14.8% |
+    | 3 | +0.1 (0.177) | +8.3 (0.396) | −3.7 (0.191) | 1,021 | 9.02 | 9.1% | 30.6% |
+    | Mean over seeds | +0.2 | +7.0 | −2.9 | | | | |
+    | SD over seeds (points) | 0.3 | 1.1 | 0.7 | | | | |
+    | Untrained (R13, R20) | −3.2 | +14.5 | −7.4 | 728 | | | |
+
+    - *The cut shares are not in the report file.* A scratch driver counted them after the
+      report, as `finish_reason == "length"` over all 6,656 generations of each arm.
+      - By this count, seed 1 has 1.65% of reads and 23.0% of candidate-free solves cut.
+        R21 (iii) gave 1.5% and 22%. R21's count was not traced, and R21 stays as
+        written.
+    - *Reading.* Descriptive and dev only. It selects nothing, and it gives no intervals,
+      since there are only three seeds.
+      - Seed 1's step was chosen by D17 as the best of three, so its value is biased
+        upward. Seeds 2 and 3 were fixed at step 100 before they existed (R28).
+        - Over seeds 2 and 3 alone, the means are 0.0 for H1a, +7.3 for the c1 contrast
+          and −3.1 for H4a. They are computed from the per-seed values of the report.
+      - *H1a.* All three seeds lie within 0.6 points of zero; the untrained reader is at
+        −3.2.
+        - The gain over the untrained reader replicates across seeds. A gain over matched
+          SC does not appear.
+        - With the planning effect of 1.5 points, R20's reading stands: a supported H1a
+          at the confirmatory stage looks unlikely. Nothing preregistered changes, and D26
+          frames that case.
+      - *H2.* The trained reader's c1 contrast is +6.4, +6.4 and +8.3, against the
+        untrained reader's +14.5. So the dev estimate of H2 is about −8, −8 and −6
+        points, against its planning magnitude of +10.
+      - *H4a.* The three seeds give −2.5, −2.5 and −3.7 points, all below the margin of −1
+        point. The untrained reader gives −7.4.
+      - *Length.* At the same step, the mean read ranges from 553 to 1,021 tokens across
+        seeds.
+        - Seed 3's reads hit the cap in 9.1% of generations, against 1.65% for seed 1 and
+          0.05% for seed 2.
+        - Seed 3's candidate-free solves are also cut most often (30.6%), so its longer
+          output is not specific to reading.
+        - R28 fixed step 100 partly because reads at steps 200 and 300 were cut about 22%
+          of the time (R21). The low cut share at step 100 holds for seeds 1 and 2, and
+          for seed 3 it lies between the two. Seed 3's H1a is still +0.1. R28's rule is
+          not changed.
+    - *For the second freeze (O3, O4).* The trained reader's dev SD over problems is
+      0.144, 0.137 and 0.177 for H1a, and 0.160, 0.162 and 0.191 for H4a.
+      - R13 measured 0.152 and 0.172 for the untrained reader; seed 3's values exceed
+        both.
+      - The step-2 entry states which SD restates O3 and O4: the largest, a pooled value,
+        or another. This entry chooses none.
+    - *Correction to R28's stack bullet.* R28 says seed 1's torch build is not on file,
+      but it is.
+      - Each run's `runs.jsonl`, at `reader_sN/logs/runs.jsonl` in the checkpoint repo,
+        records the stack. For all three seeds it is the same: torch 2.14.0+cu130,
+        transformers 5.20.2, TRL 1.18.0 and vLLM 0.33.0, on an NVIDIA RTX PRO 6000
+        Blackwell Server Edition.
+      - So the three seeds share one stack and one GPU type. R28's text stays as written.
+    - *Storage.*
+      - Seed 2's two state repos were deleted on 2026-11-25 with the owner's approval, as
+        R28 required before seed 3.
+      - Seed 3's two state repos, of step 100 and step 75 at about 20.7 GB each, are kept
+        by the owner's choice (2026-11-28).
+      - Private storage is at 79.4 GB of 100. The owner is asked again before any run
+        that needs more than about 20 GB of it.
+    - Nothing preregistered changes.
   - **R28, reader seeds 2 and 3, trained to step 100 only (2026-11-24); the owner
     approved it the same day, before either run started.**
     - *What changes.* R20's pause of Stage 3 is lifted for two runs only: reader seeds 2

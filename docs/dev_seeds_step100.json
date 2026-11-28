@@ -1,0 +1,154 @@
+{
+  "note": "descriptive (R28): each seed by R13's summarise; selects nothing",
+  "complete": [
+    "reader_s1",
+    "reader_s2",
+    "reader_s3"
+  ],
+  "incomplete": {},
+  "across_seeds": {
+    "H1a": {
+      "seeds": 3,
+      "mean": 0.0016644106195642715,
+      "sd_over_seeds": 0.0030257364951254482,
+      "sd_over_problems_by_seed": {
+        "reader_s1": 0.1436786636547337,
+        "reader_s2": 0.13678791316267272,
+        "reader_s3": 0.17655013237469422
+      }
+    },
+    "H2_single_arm": {
+      "seeds": 3,
+      "mean": 0.070063826509139,
+      "sd_over_seeds": 0.011036413084983867,
+      "sd_over_problems_by_seed": {
+        "reader_s1": 0.4028116331686225,
+        "reader_s2": 0.40080328757824135,
+        "reader_s3": 0.3962888644196578
+      }
+    },
+    "H4a": {
+      "seeds": 3,
+      "mean": -0.029112102123465756,
+      "sd_over_seeds": 0.007025165499230041,
+      "sd_over_problems_by_seed": {
+        "reader_s1": 0.15993166654517965,
+        "reader_s2": 0.1616185918197015,
+        "reader_s3": 0.19110412513170605
+      }
+    }
+  },
+  "per_run": {
+    "reader_s1": {
+      "draws": 16,
+      "problems": 208,
+      "sets": {
+        "c2+": 2183,
+        "c0": 844,
+        "c1": 301
+      },
+      "reader_generated_tokens_mean": 729.7611177884615,
+      "k_star_mean": 8.740875802627606,
+      "H1a": {
+        "n": 208,
+        "not_estimable": 0,
+        "mean": 0.004908304663584034,
+        "sd": 0.1436786636547337
+      },
+      "H2_single_arm": {
+        "n": 64,
+        "coverage": 0.3076923076923077,
+        "mean": 0.0636011341089466,
+        "sd": 0.4028116331686225
+      },
+      "H4a": {
+        "n": 154,
+        "coverage": 0.7403846153846154,
+        "mean": -0.025137952775939786,
+        "sd": 0.15993166654517965
+      },
+      "n_outcomes": 13312,
+      "outcomes_by_arm": {
+        "reader_full": 6656,
+        "candidate_free": 6656
+      }
+    },
+    "reader_s2": {
+      "draws": 16,
+      "problems": 208,
+      "sets": {
+        "c2+": 2183,
+        "c0": 844,
+        "c1": 301
+      },
+      "reader_generated_tokens_mean": 552.9609375,
+      "k_star_mean": 8.593158996300293,
+      "H1a": {
+        "n": 208,
+        "not_estimable": 0,
+        "mean": -0.0010813446206545117,
+        "sd": 0.13678791316267272
+      },
+      "H2_single_arm": {
+        "n": 64,
+        "coverage": 0.3076923076923077,
+        "mean": 0.0637832003066378,
+        "sd": 0.40080328757824135
+      },
+      "H4a": {
+        "n": 154,
+        "coverage": 0.7403846153846154,
+        "mean": -0.02497483577029031,
+        "sd": 0.1616185918197015
+      },
+      "n_outcomes": 13312,
+      "outcomes_by_arm": {
+        "reader_full": 6656,
+        "candidate_free": 6656
+      }
+    },
+    "reader_s3": {
+      "draws": 16,
+      "problems": 208,
+      "sets": {
+        "c2+": 2183,
+        "c0": 844,
+        "c1": 301
+      },
+      "reader_generated_tokens_mean": 1020.7731370192307,
+      "k_star_mean": 9.024285082087975,
+      "H1a": {
+        "n": 208,
+        "not_estimable": 0,
+        "mean": 0.0011662718157632928,
+        "sd": 0.17655013237469422
+      },
+      "H2_single_arm": {
+        "n": 64,
+        "coverage": 0.3076923076923077,
+        "mean": 0.08280714511183261,
+        "sd": 0.3962888644196578
+      },
+      "H4a": {
+        "n": 154,
+        "coverage": 0.7403846153846154,
+        "mean": -0.03722351782416717,
+        "sd": 0.19110412513170605
+      },
+      "n_outcomes": 13312,
+      "outcomes_by_arm": {
+        "reader_full": 6656,
+        "candidate_free": 6656
+      }
+    }
+  },
+  "step": 100,
+  "settings": {
+    "level": 5,
+    "k": 8,
+    "draws": 16,
+    "replicates": 2,
+    "temperature": 0.7,
+    "prompt_version": "reader_v1"
+  }
+}
